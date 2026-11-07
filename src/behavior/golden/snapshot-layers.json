@@ -1,0 +1,41 @@
+{
+  "name": "ac_sn_1_snapshot_initializes_layers",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "coding",
+      "mood": "energetic",
+      "season": "summer",
+      "fullscreen": false,
+      "music": { "playing": true, "title": "Song", "artist": "Artist", "sourceApp": "Spotify.exe" }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "tick": true,
+      "expect": {
+        "body": "code",
+        "face": "energetic",
+        "outfit": "summer_glasses",
+        "accessory": "headphones",
+        "overlay": "headbob",
+        "speed": 1.2,
+        "bubble": null,
+        "visible": true,
+        "move": "stay"
+      }
+    },
+    {
+      "at": 5000,
+      "tick": true,
+      "expect": {
+        "body": "code",
+        "overlay": "headbob",
+        "accessory": "headphones",
+        "bubble": null
+      }
+    }
+  ]
+}

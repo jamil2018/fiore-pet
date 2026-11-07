@@ -1,0 +1,51 @@
+{
+  "name": "ac_mu_2_music_while_coding",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "other",
+      "mood": "content",
+      "season": "autumn",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "coding", "process": "Code.exe", "title": "x" }
+      },
+      "expect": {
+        "body": "code",
+        "face": "content",
+        "outfit": "autumn",
+        "accessory": "laptop",
+        "overlay": null,
+        "speed": 1,
+        "visible": true,
+        "move": "stay"
+      }
+    },
+    {
+      "at": 500,
+      "event": {
+        "type": "music.started",
+        "payload": { "title": "t", "artist": "a", "sourceApp": "Spotify.exe" }
+      },
+      "expect": { "body": "notice", "accessory": "headphones", "overlay": null }
+    },
+    {
+      "at": 1500,
+      "tick": true,
+      "expect": {
+        "body": "code",
+        "overlay": "headbob",
+        "accessory": "headphones",
+        "face": "content"
+      }
+    }
+  ]
+}
