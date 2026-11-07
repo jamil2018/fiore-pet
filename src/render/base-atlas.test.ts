@@ -28,6 +28,18 @@ const BODY = [
   'twirl',
 ] as const;
 
+const ACTIVITY_BODY = ['code', 'think', 'write', 'browse'] as const;
+
+const sheetImages = new Map<string, { width: number; height: number; pixels: Uint8Array }>();
+
+function sheetImage(name: string) {
+  const cached = sheetImages.get(name);
+  if (cached) return cached;
+  const decoded = readRgba(readFileSync(join(sprites, name)));
+  sheetImages.set(name, decoded);
+  return decoded;
+}
+
 function readRgba(png: Buffer): { width: number; height: number; pixels: Uint8Array } {
   if (png[0] !== 0x89 || png.toString('ascii', 1, 4) !== 'PNG') throw new Error('not a png');
   const width = png.readUInt32BE(16);
@@ -64,8 +76,7 @@ function cell(pixels: Uint8Array, width: number, col: number, row: number): Buff
 }
 
 describe('base atlas', () => {
-  const png = readFileSync(join(sprites, 'base.png'));
-  const image = readRgba(png);
+  const image = sheetImage('base.png');
   const files = SPRITE_GROUPS.map((group) => {
     const json: unknown = JSON.parse(readFileSync(join(sprites, `${group}.json`), 'utf8'));
     return parseAtlas(json, group);
@@ -77,8 +88,10 @@ describe('base atlas', () => {
     expect(image.height % 32).toBe(0);
     for (const file of files) {
       for (const sheet of file.sheets) {
-        expect(sheet.image).toBe('base.png');
-        validateImage(sheet, image);
+        const sheetPixels = sheetImage(sheet.image);
+        expect(sheetPixels.width % 32).toBe(0);
+        expect(sheetPixels.height % 32).toBe(0);
+        validateImage(sheet, sheetPixels);
       }
     }
     const baseOnly = mergeAtlases(files.filter((file) => file.group === 'base'));
@@ -93,13 +106,19 @@ describe('base atlas', () => {
       expect(def.loop).toBe(!(ONE_SHOTS as readonly string[]).includes(name));
       expect(def.headOffset).toHaveLength(def.count);
     }
-    for (const name of ['code', 'think', 'write', 'browse']) {
-      expect(merged.lookup('body', undefined, name)).toBeNull();
+    for (const name of ACTIVITY_BODY) {
+      const def = merged.lookup('body', undefined, name);
+      expect(def, name).toBeTruthy();
+      if (!def?.headOffset) throw new Error(`missing headOffset for ${name}`);
+      expect(def.image).toBe('activity.png');
+      expect(def.headOffset).toHaveLength(def.count);
     }
     for (const face of FACES) expect(merged.lookup('face', face, '*')?.count).toBe(1);
     for (const outfit of OUTFITS) expect(merged.lookup('outfit', outfit, '*')?.count).toBe(1);
     for (const accessory of ACCESSORIES) {
-      expect(merged.lookup('accessory', accessory, '*')?.count).toBe(1);
+      const def = merged.lookup('accessory', accessory, '*');
+      expect(def?.count).toBe(1);
+      expect(def?.image).toBe('base.png');
     }
   });
 

@@ -18,14 +18,14 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src-tauri/src/logging.rs`: `tracing` JSON lines to `logs/fiore-dev.log`, `RUST_LOG` filter.
 - `src-tauri/src/debug.rs`: dev-only `emit_debug_event` command and loopback TCP injector (event injection for `emit-event.mjs`, debug panel).
 - `src-tauri/src/autostart.rs`: autostart toggle wired to tray. [planned W3.0]
-- `src-tauri/src/sensors/mod.rs`: `Sensor` trait, registration of all 5 sensors (stubs from W1.0). Contract file.
+- `src-tauri/src/sensors/mod.rs`: `Sensor` trait and registration of all 5 sensors. Contract file.
 - `src-tauri/src/sensors/win.rs`: shared Win32 helpers (`WinRtGuard`, `ComGuard`, `foreground`, `is_own_pid`). Contract file. `#[cfg(windows)]`.
-- `src-tauri/src/sensors/media.rs`: GSMTC session -> `music.started`, `music.track_changed`, `music.stopped` (2 s stop debounce). [stub W1.0, fill w20-music]
-- `src-tauri/src/sensors/audio_peak.rs`: `IAudioMeterInformation` peak -> `music.level` at ~15 Hz while playing. [stub W1.0, fill w20-music]
-- `src-tauri/src/sensors/foreground.rs`: 500 ms foreground poll, classifier, 1.5 s hold -> `app.category_changed`. [stub W1.0, fill w20-app-category]
-- `src-tauri/src/sensors/fullscreen.rs`: `SHQueryUserNotificationState` + monitor-rect compare -> `fullscreen.entered`/`exited`. [stub W1.0, fill w20-fullscreen]
-- `src-tauri/src/sensors/clock.rs`: mood (1/min) and season (startup, midnight), `FIORE_FAKE_CLOCK`, hemisphere flag -> `time.mood_changed`, `season.changed`. [stub W1.0, fill w20-mood-season]
-- `src-tauri/resources/app-categories.json`: process-name and title-keyword rules per category. [planned W2.0 `w20-app-category`]
+- `src-tauri/src/sensors/media.rs`: GSMTC session -> `music.started`, `music.track_changed`, `music.stopped` (2 s stop debounce).
+- `src-tauri/src/sensors/audio_peak.rs`: `IAudioMeterInformation` peak -> `music.level` at ~15 Hz while playing.
+- `src-tauri/src/sensors/foreground.rs`: 500 ms foreground poll, classifier, 1.5 s hold -> `app.category_changed`.
+- `src-tauri/src/sensors/fullscreen.rs`: `SHQueryUserNotificationState` + monitor-rect compare -> `fullscreen.entered`/`exited`.
+- `src-tauri/src/sensors/clock.rs`: mood (1/min) and season (startup, midnight), `FIORE_FAKE_CLOCK`, hemisphere flag -> `time.mood_changed`, `season.changed`.
+- `src-tauri/resources/app-categories.json`: process-name and title-keyword rules per category.
 
 ## Frontend (`src/`)
 - `src/main.ts`: entry; picks bridge (tauri/mock), builds engine, animator, mover.
@@ -39,26 +39,26 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src/behavior/golden/*.json`: golden replay cases (see `docs/testing.md`).
 - `src/behavior/golden/events/*.json`: shared serde fixtures, one file per catalog event.
 - `src/behavior/reactions/index.ts`: reaction registry with a stub per feature. Contract file.
-- `src/behavior/reactions/fullscreen.ts`: hide/appear reducer. [stub W1.0, fill w20-fullscreen]
-- `src/behavior/reactions/petting.ts`: petting reducer (look, lean, happy, wag). [stub W1.0, fill w20-petting]
-- `src/behavior/reactions/activity.ts`: coding/writing/browsing reducer. [stub W1.0, fill w20-app-category]
-- `src/behavior/reactions/music.ts`: notice, dance/headbob, jump, bubble reducer. [stub W1.0, fill w20-music]
-- `src/behavior/reactions/mood.ts`: mood -> face and speed, stretch/yawn. [stub W1.0, fill w20-mood-season]
-- `src/behavior/reactions/season.ts`: season -> outfit, twirl. [stub W1.0, fill w20-mood-season]
+- `src/behavior/reactions/fullscreen.ts`: hide, appear, and the hidden tier stay engine-owned.
+- `src/behavior/reactions/petting.ts`: stroke facing at the petting tier.
+- `src/behavior/reactions/activity.ts`: coding `think` pose for 2 s every 20–40 s.
+- `src/behavior/reactions/music.ts`: smoothed `music.level` overlay while playing.
+- `src/behavior/reactions/mood.ts`: face, speed, stretch, and yawn stay engine-owned.
+- `src/behavior/reactions/season.ts`: outfit and twirl stay engine-owned.
 - `src/render/animator.ts`: layered sprite animator (canvas, 3x nearest-neighbor, frame timing).
 - `src/render/atlas.ts`: loads and merges `public/sprites/<group>.json` atlases, schema validation.
 - `src/interaction/mover.ts`: `WindowMover` (wander, `setPosition`).
-- `src/interaction/petting.ts`: pointer hover/stroke/petted detector emitting `pet.*`. [stub W1.0, fill w20-petting]
+- `src/interaction/petting.ts`: pointer hover, stroke, and petted detector emitting `pet.*`.
 - `src/debug/panel.ts`: dev-only panel that fires fake events.
 
 ## Sprites (`public/sprites/`, `<group>.png` + `<group>.json` each)
-- `public/sprites/base.*`: body idle, walk, sit, notice, jump. Frozen after the W2.0 contract. Group sheets may still reference `base.png`.
-- `public/sprites/activity.*`: accessory laptop, notepad, tablet. Body code, think, write, browse are added by the task. [stub W2.0, fill w20-app-category]
-- `public/sprites/music.*`: body dance, headbob; accessory headphones. [stub W2.0, fill w20-music]
-- `public/sprites/petting.*`: body lean, happy, wag; face happy. [stub W2.0, fill w20-petting]
-- `public/sprites/fullscreen.*`: body hide, appear. [stub W2.0, fill w20-fullscreen]
-- `public/sprites/outfits.*`: seasonal outfits and body twirl. [stub W2.0, fill w20-mood-season]
-- `public/sprites/faces.*`: mood faces and body stretch, yawn. [stub W2.0, fill w20-mood-season]
+- `public/sprites/base.*`: body idle, walk, sit, notice, jump. Frozen after the W2.0 contract. Other groups may still reference `base.png`.
+- `public/sprites/activity.*`: body code, think, write, browse on `activity.png`; accessories laptop, notepad, tablet on `base.png`.
+- `public/sprites/music.*`: body dance, headbob; accessory headphones. Image stays `base.png`.
+- `public/sprites/petting.*`: body lean, happy, wag; face happy. Image stays `base.png`.
+- `public/sprites/fullscreen.*`: body hide, appear. Image stays `base.png`.
+- `public/sprites/outfits.*`: seasonal outfits and body twirl. Image stays `base.png`.
+- `public/sprites/faces.*`: mood faces and body stretch, yawn. Image stays `base.png`.
 
 ## Dev tools (`scripts/dev/`)
 - `scripts/dev/emit-event.mjs`: inject a `FioreEvent` into the running dev app.
