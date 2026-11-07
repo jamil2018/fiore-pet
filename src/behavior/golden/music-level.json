@@ -1,0 +1,122 @@
+{
+  "name": "ac_mu_3_level_bubble_and_stop",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "other",
+      "mood": "content",
+      "season": "autumn",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "event": { "type": "music.level", "payload": { "peak": 0.9 } },
+      "expect": {
+        "body": "idle",
+        "accessory": null,
+        "overlay": null,
+        "overlayLevel": 0,
+        "bubble": null,
+        "move": "wander"
+      }
+    },
+    {
+      "at": 10,
+      "event": {
+        "type": "music.started",
+        "payload": { "title": "t", "artist": "a", "sourceApp": "app" }
+      },
+      "expect": {
+        "body": "notice",
+        "accessory": "headphones",
+        "overlay": null,
+        "overlayLevel": 0,
+        "bubble": null
+      }
+    },
+    {
+      "at": 1010,
+      "tick": true,
+      "expect": {
+        "body": "dance",
+        "accessory": "headphones",
+        "overlay": null,
+        "overlayLevel": 0
+      }
+    },
+    {
+      "at": 1100,
+      "event": { "type": "music.level", "payload": { "peak": 0.4 } },
+      "expect": {
+        "body": "dance",
+        "accessory": "headphones",
+        "overlay": null,
+        "overlayLevel": 0.12
+      }
+    },
+    {
+      "at": 1166,
+      "event": { "type": "music.level", "payload": { "peak": 0.8 } },
+      "expect": {
+        "body": "dance",
+        "accessory": "headphones",
+        "overlay": null,
+        "overlayLevel": 0.324
+      }
+    },
+    {
+      "at": 1200,
+      "event": {
+        "type": "music.track_changed",
+        "payload": { "title": "Song", "artist": "Ada" }
+      },
+      "expect": {
+        "body": "notice",
+        "bubble": "Song",
+        "accessory": "headphones",
+        "overlayLevel": 0.324
+      }
+    },
+    {
+      "at": 2200,
+      "tick": true,
+      "expect": {
+        "body": "dance",
+        "bubble": "Song",
+        "accessory": "headphones",
+        "overlayLevel": 0.324
+      }
+    },
+    {
+      "at": 4199,
+      "tick": true,
+      "expect": { "body": "dance", "bubble": "Song", "accessory": "headphones" }
+    },
+    {
+      "at": 4200,
+      "tick": true,
+      "expect": {
+        "body": "dance",
+        "bubble": null,
+        "accessory": "headphones",
+        "overlay": null
+      }
+    },
+    {
+      "at": 4300,
+      "event": { "type": "music.stopped", "payload": {} },
+      "expect": {
+        "body": "idle",
+        "accessory": null,
+        "overlay": null,
+        "overlayLevel": 0,
+        "bubble": null,
+        "move": "wander"
+      }
+    }
+  ]
+}
