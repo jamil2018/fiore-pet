@@ -17,6 +17,12 @@ Format: `- [ ] <summary> (source: <run-id or "plan">, <date>)`. Every `TODO(back
 - [ ] Replace placeholder sprites with final art (drop-in, no code changes) (source: plan, 2026-11-07)
 - [ ] In `Hub::inject`, replace the named `_folded` binding with `let _` or `drop`, or comment that the fold return is discarded on purpose (source: w10-contracts, 2026-11-08)
 - [ ] Rename `debug::inject` (for example to `forward_line`) so it is distinct from `Hub::inject` (source: w10-contracts, 2026-11-08)
+- [ ] Hover shows body `idle` over the activity animation; the spec has no separate looks-up pose (`engine.ts`) (source: w11-judge, 2026-11-08)
+- [ ] Wander moves the window while the body stays `idle`; `walk` is never selected (`engine.ts`) (source: w11-judge, 2026-11-08)
+- [ ] "One stretch per day" is a rolling 24 hours, not a calendar day (`engine.ts`) (source: w11-judge, 2026-11-08)
+- [ ] Animator resets canvas CSS size and `image-rendering` on every render (`animator.ts`) (source: w11-judge, 2026-11-08)
+- [ ] W2.0 contract step: feature behavior (activity props, music dance/headbob, one-shot rules, speech bubble) is hard-coded in `engine.ts`, and any reaction effect for an event suppresses those defaults. Move that logic into `reactions/*.ts` or document engine-owned defaults in `docs/architecture.md` and the W2.0 packets. Do not refactor reactions before that step. (source: w11-judge, 2026-11-08)
 
 ## Done
-(none yet)
+- [x] Codemap no longer describes a set-position command in `window.rs`; wander uses `bridge.window.setPosition` (source: w11-judge, 2026-11-08)
+- [x] Frontend calls `bridge.window.hide`/`show` when `resolution.visible` flips (source: w11-judge, 2026-11-08)

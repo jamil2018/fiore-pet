@@ -14,7 +14,7 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src-tauri/src/lib.rs`: composition root; plugins, logging, window, hub, commands. Contract file.
 - `src-tauri/src/events.rs`: `FioreEvent` serde enum (all catalog events), payload types, serde tests. Contract file.
 - `src-tauri/src/hub.rs`: `EventHub`; registers sensors, spawns threads, dedupes, emits `fiore://event`, sends `state.snapshot`. Contract file.
-- `src-tauri/src/window.rs`: window setup, tray (Show/Hide, Quit), single instance, set-position command.
+- `src-tauri/src/window.rs`: window setup, tray (Show/Hide, Quit), single instance, initial placement (not a position command; wander uses `bridge.window.setPosition`).
 - `src-tauri/src/logging.rs`: `tracing` JSON lines to `logs/fiore-dev.log`, `RUST_LOG` filter.
 - `src-tauri/src/debug.rs`: dev-only `emit_debug_event` command and loopback TCP injector (event injection for `emit-event.mjs`, debug panel).
 - `src-tauri/src/autostart.rs`: autostart toggle wired to tray. [planned W3.0]
