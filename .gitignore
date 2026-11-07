@@ -1,0 +1,43 @@
+# --- Secrets (public repo: never commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+secrets/
+CURSOR_API_KEY*
+
+# --- Build output / dependencies ---
+target/
+node_modules/
+dist/
+src-tauri/gen/
+
+# --- Logs ---
+logs/
+*.log
+
+# --- Local harness state (see docs/harness/README.md) ---
+# Directories are kept via .gitkeep; their contents are local only.
+.harness/runs/*
+!.harness/runs/.gitkeep
+.harness/metrics/*
+!.harness/metrics/.gitkeep
+.harness/claims/*
+!.harness/claims/.gitkeep
+.harness/handoff/*
+!.harness/handoff/.gitkeep
+.harness/verdict.json
+
+# --- Eval results (baseline.json is tracked) ---
+evals/results/*
+!evals/results/.gitkeep
+
+# --- OS / editor ---
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+*.swp
