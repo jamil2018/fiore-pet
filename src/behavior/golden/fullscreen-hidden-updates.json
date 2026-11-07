@@ -1,0 +1,111 @@
+{
+  "name": "ac_fs_hidden_updates",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "other",
+      "mood": "content",
+      "season": "autumn",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "event": { "type": "fullscreen.entered", "payload": {} },
+      "expect": { "body": "hide", "visible": true, "overlay": null, "bubble": null }
+    },
+    {
+      "at": 1000,
+      "tick": true,
+      "expect": { "body": null, "visible": false, "overlay": null, "bubble": null }
+    },
+    {
+      "at": 1200,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "coding", "process": "Code.exe", "title": "x" }
+      },
+      "expect": { "body": null, "visible": false, "overlay": null, "bubble": null }
+    },
+    {
+      "at": 1400,
+      "event": {
+        "type": "music.started",
+        "payload": { "title": "t", "artist": "a", "sourceApp": "Spotify.exe" }
+      },
+      "expect": {
+        "body": null,
+        "visible": false,
+        "overlay": null,
+        "bubble": null,
+        "accessory": "headphones"
+      }
+    },
+    {
+      "at": 1600,
+      "event": { "type": "music.level", "payload": { "peak": 1 } },
+      "expect": { "body": null, "visible": false, "overlay": null, "bubble": null }
+    },
+    {
+      "at": 1800,
+      "event": {
+        "type": "music.track_changed",
+        "payload": { "title": "next", "artist": "a" }
+      },
+      "expect": { "body": null, "visible": false, "overlay": null, "bubble": null }
+    },
+    {
+      "at": 2000,
+      "event": { "type": "fullscreen.exited", "payload": {} },
+      "expect": { "body": "appear", "visible": true, "bubble": null }
+    },
+    {
+      "at": 3000,
+      "tick": true,
+      "expect": {
+        "body": "code",
+        "overlay": "headbob",
+        "accessory": "headphones",
+        "visible": true,
+        "move": "stay"
+      }
+    },
+    {
+      "at": 3200,
+      "event": { "type": "fullscreen.entered", "payload": {} },
+      "expect": { "body": "hide", "visible": true, "bubble": null }
+    },
+    {
+      "at": 4200,
+      "tick": true,
+      "expect": { "body": null, "visible": false, "overlay": null, "bubble": null }
+    },
+    {
+      "at": 4400,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "other", "process": "Notes.exe", "title": "y" }
+      },
+      "expect": { "body": null, "visible": false, "overlay": null, "bubble": null }
+    },
+    {
+      "at": 4600,
+      "event": { "type": "fullscreen.exited", "payload": {} },
+      "expect": { "body": "appear", "visible": true }
+    },
+    {
+      "at": 5600,
+      "tick": true,
+      "expect": {
+        "body": "dance",
+        "overlay": null,
+        "accessory": "headphones",
+        "visible": true,
+        "move": "stay"
+      }
+    }
+  ]
+}
