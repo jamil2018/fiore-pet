@@ -1,0 +1,14 @@
+{
+  "coding": [
+    "Code.exe",
+    "Cursor.exe",
+    "devenv.exe",
+    "idea64.exe",
+    "pycharm64.exe",
+    "sublime_text.exe",
+    "WindowsTerminal.exe"
+  ],
+  "writing": ["notepad.exe", "notepad++.exe", "WINWORD.EXE", "Obsidian.exe", "Notion.exe"],
+  "browsing": ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe"],
+  "writingTitleKeywords": ["Google Docs", "Notion", "Word"]
+}
