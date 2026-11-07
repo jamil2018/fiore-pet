@@ -1,5 +1,6 @@
 import { defineReaction } from '../types';
 
+// Hide, appear, and the hidden tier stay in the engine, so this reaction emits nothing.
 export const fullscreenReaction = defineReaction<Record<string, never>>({
   id: 'fullscreen',
   init() {
