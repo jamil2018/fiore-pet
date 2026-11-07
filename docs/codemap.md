@@ -14,8 +14,8 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src-tauri/src/lib.rs`: composition root; plugins, logging, window, hub, commands. Contract file.
 - `src-tauri/src/events.rs`: `FioreEvent` serde enum (all catalog events), payload types, serde tests. Contract file.
 - `src-tauri/src/hub.rs`: `EventHub`; registers sensors, spawns threads, dedupes, emits `fiore://event`, sends `state.snapshot`. Contract file.
-- `src-tauri/src/window.rs`: window setup, tray (Show/Hide, Quit), single instance, set-position command. [stub W1.0, fill w11-window]
-- `src-tauri/src/logging.rs`: `tracing` JSON lines to `logs/fiore-dev.log`, `RUST_LOG` filter. [stub W1.0, fill w11-devtools]
+- `src-tauri/src/window.rs`: window setup, tray (Show/Hide, Quit), single instance, set-position command.
+- `src-tauri/src/logging.rs`: `tracing` JSON lines to `logs/fiore-dev.log`, `RUST_LOG` filter.
 - `src-tauri/src/debug.rs`: dev-only `emit_debug_event` command and loopback TCP injector (event injection for `emit-event.mjs`, debug panel).
 - `src-tauri/src/autostart.rs`: autostart toggle wired to tray. [planned W3.0]
 - `src-tauri/src/sensors/mod.rs`: `Sensor` trait, registration of all 5 sensors (stubs from W1.0). Contract file.
@@ -31,11 +31,11 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src/events.ts`: TS union mirroring `FioreEvent`. Contract file.
 - `src/bridge/index.ts`: `Bridge` interface and selection (`tauri` vs `mock`).
 - `src/bridge/tauri.ts`: listens to `fiore://event`, wraps debug command.
-- `src/bridge/mock.ts`: fake bridge for browser `dev:mock`, scripted/manual events. [stub W1.0, fill w11-devtools]
+- `src/bridge/mock.ts`: fake bridge for browser `dev:mock`, scripted/manual events.
 - `src/behavior/types.ts`: engine input/output types (`Resolution`, layer/animation name constants, reaction shape). Contract file.
-- `src/behavior/engine.ts`: pure priority/layering resolver. [stub W1.0, fill w11-engine]
-- `src/behavior/golden.test.ts`: golden replay runner. [planned W1.1 `w11-engine`]
-- `src/behavior/golden/*.json`: golden replay cases (see `docs/testing.md`). [planned W1.1]
+- `src/behavior/engine.ts`: pure priority/layering resolver.
+- `src/behavior/golden.test.ts`: golden replay runner.
+- `src/behavior/golden/*.json`: golden replay cases (see `docs/testing.md`).
 - `src/behavior/golden/events/*.json`: shared serde fixtures, one file per catalog event.
 - `src/behavior/reactions/index.ts`: reaction registry with a stub per feature. Contract file.
 - `src/behavior/reactions/fullscreen.ts`: hide/appear reducer. [stub W1.0, fill w20-fullscreen]
@@ -44,14 +44,14 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src/behavior/reactions/music.ts`: notice, dance/headbob, jump, bubble reducer. [stub W1.0, fill w20-music]
 - `src/behavior/reactions/mood.ts`: mood -> face and speed, stretch/yawn. [stub W1.0, fill w20-mood-season]
 - `src/behavior/reactions/season.ts`: season -> outfit, twirl. [stub W1.0, fill w20-mood-season]
-- `src/render/animator.ts`: layered sprite animator (canvas, 3x nearest-neighbor, frame timing). [stub W1.0, fill w11-render]
+- `src/render/animator.ts`: layered sprite animator (canvas, 3x nearest-neighbor, frame timing).
 - `src/render/atlas.ts`: loads and merges `public/sprites/<group>.json` atlases, schema validation.
-- `src/interaction/mover.ts`: `WindowMover` (wander, `setPosition`). [stub W1.0, fill w11-window]
+- `src/interaction/mover.ts`: `WindowMover` (wander, `setPosition`).
 - `src/interaction/petting.ts`: pointer hover/stroke/petted detector emitting `pet.*`. [stub W1.0, fill w20-petting]
-- `src/debug/panel.ts`: dev-only panel that fires fake events. [stub W1.0, fill w11-devtools]
+- `src/debug/panel.ts`: dev-only panel that fires fake events.
 
 ## Sprites (`public/sprites/`, `<group>.png` + `<group>.json` each)
-- `public/sprites/base.*`: idle, walk, sit, notice, jump, dance base animations. [planned W1.1 `w11-render`]
+- `public/sprites/base.*`: body idle, walk, sit, notice, jump, dance, headbob, lean, happy, wag, hide, appear, stretch, yawn, twirl, plus face/outfit/accessory placeholders.
 - `public/sprites/activity.*`: code, think, write, browse, props (laptop, notepad, tablet). [planned W2.0 `w20-app-category`]
 - `public/sprites/music.*`: dance, headbob, headphones. [planned W2.0 `w20-music`]
 - `public/sprites/petting.*`: lean, happy, wag, hearts. [planned W2.0 `w20-petting`]
@@ -60,10 +60,12 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `public/sprites/faces.*`: mood faces, stretch, yawn. [planned W2.0 `w20-mood-season`]
 
 ## Dev tools (`scripts/dev/`)
-- `scripts/dev/emit-event.mjs`: inject a `FioreEvent` into the running dev app. [planned W1.1 `w11-devtools`]
-- `scripts/dev/sim/start-notepad.ps1`: simulate `writing` activity. [planned W1.1 `w11-devtools`]
-- `scripts/dev/sim/play-test-tone.ps1`: play bundled audio so GSMTC sees media. [planned W1.1 `w11-devtools`]
-- `scripts/dev/sim/fullscreen-window.ps1`: simulate a fullscreen window. [planned W1.1 `w11-devtools`]
+- `scripts/dev/emit-event.mjs`: inject a `FioreEvent` into the running dev app.
+- `scripts/dev/sim/start-notepad.ps1`: simulate `writing` activity.
+- `scripts/dev/sim/play-test-tone.ps1`: play bundled audio so GSMTC sees media.
+- `scripts/dev/sim/test-tone.wav`: 440 Hz tone bundled for `play-test-tone.ps1`.
+- `scripts/dev/sim/fullscreen-window.ps1`: simulate a fullscreen window.
+- `scripts/dev/sim/set-fake-clock.ps1`: set `FIORE_FAKE_CLOCK` for mood, season, and boundary times.
 
 ## Config (repo root)
 - `package.json`, `vite.config.ts`, `tsconfig.json`, `biome.json`, `rustfmt.toml`: tooling configs (`dev`, `dev:mock`, `test`, `build` scripts).

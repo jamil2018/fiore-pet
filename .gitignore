@@ -18,6 +18,9 @@ src-tauri/gen/
 logs/
 *.log
 
+# --- Local task worktrees (in-repo checkouts; not source) ---
+.worktrees/
+
 # --- Local harness state (see docs/harness/README.md) ---
 # Directories are kept via .gitkeep; their contents are local only.
 .harness/runs/*
