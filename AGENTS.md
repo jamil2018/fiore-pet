@@ -28,5 +28,5 @@ Mission: Fiore is a Windows desktop pet (Tauri v2, Rust + TypeScript, 32x32 pixe
 6. Run `check fast -Scope <your paths>` before handoff; never skip tests or silence lints to pass.
 7. Only the orchestrator writes `docs/harness/lessons.md`; return lesson candidates instead.
 8. No copied text across docs: link to the owning doc. Update `last-verified` when editing a doc.
-9. `CURSOR_API_KEY` and secrets come from the environment only; never commit them.
+9. Secrets come from the environment only; never commit them. Evals run in the IDE and do not use an API key.
 10. Never push `--force`, nor push `task/*` branches to `main`.

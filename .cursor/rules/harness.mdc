@@ -41,5 +41,5 @@ Edits to `.cursor/agents|rules|skills|hooks` or `docs/harness/*` (except lessons
 
 ## Git
 - `main` gets only judged checkpoint commits (conventional commits). Push after integration.
-- Never `git push --force`, `git reset --hard`, or push `task/*` to `main`. `CURSOR_API_KEY` from env only; never commit secrets.
+- Never `git push --force`, `git reset --hard`, or push `task/*` to `main`. Secrets come from the environment only; never commit them. Evals use the IDE subscription and do not use an API key.
 - Privacy: never read keystroke content; no window titles/track names in logs above debug level.

@@ -112,7 +112,14 @@ node scripts/harness/ownership-check.mjs --branch <task/...> --task <task-id> [-
 node scripts/harness/metrics-report.mjs [--wave <wave>] [--json]
     summarizes .harness/metrics/*.jsonl for /retro (calls per lane, escalations, parallelism)
 
-node evals/run.mjs [<task-id>] [--concurrency <n>]       # needs CURSOR_API_KEY in env
+node evals/run.mjs --prepare [<task-id>]                 # worktree + seed; no agent
+node evals/run.mjs --grade --manifest <prepare.json>     # grade a finished IDE run
+node evals/run.mjs --grade --worktree <path> [--task id]
+node evals/run.mjs --offline-grade [<task-id>]           # seed fixtures; live metrics stay null
+node evals/run.mjs --list | --dry-run
+node evals/run.mjs --cleanup --manifest <prepare.json>
+    Execution is `/eval` in the IDE (subscription). This script only prepares and grades.
+    No API key. `--write-baseline --yes` records a baseline the user has approved.
 node scripts/dev/emit-event.mjs <event> [json]           # Phase 1
 ```
 
@@ -135,4 +142,4 @@ node scripts/dev/emit-event.mjs <event> [json]           # Phase 1
 
 ## 8. Git workflow (summary)
 
-`main` receives only judged checkpoint commits and is pushed after each. Parallel tasks use local `task/*` worktree branches, deleted after merge. CI (`check.yml`, windows-latest) runs `check.ps1 -Tier full`. Evals never run in CI. `CURSOR_API_KEY` is read from the environment only. Hooks block force-push and pushes from `task/*` to `main`.
+`main` receives only judged checkpoint commits and is pushed after each. Parallel tasks use local `task/*` worktree branches, deleted after merge. CI (`check.yml`, windows-latest) runs `check.ps1 -Tier full`. Evals never run in CI: the IDE subscription executes them and `evals/run.mjs` grades them, with no API key. Hooks block force-push and pushes from `task/*` to `main`. Secrets come from the environment only.

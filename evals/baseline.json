@@ -1,20 +1,56 @@
 {
   "version": 1,
-  "status": "placeholder",
-  "note": "Placeholder structure. The real baseline is recorded in W0.2 (node evals/run.mjs --write-baseline --yes) and later changes only after the user approves.",
-  "recorded": null,
-  "approvedBy": null,
-  "base": null,
+  "status": "recorded",
+  "recorded": "2026-11-07T17:41:03.949Z",
+  "approvedBy": "user directive 2026-11-07",
+  "method": "offline-grade",
+  "mode": "harness-ide",
+  "runner": "ide",
+  "sdk": null,
   "model": null,
-  "sdk": "@cursor/sdk",
+  "base": "f8666e3176542b68d2803412ec9cc33183ec1683",
+  "note": "Baseline v0 is a grader dry-run of the committed seed fixtures (method offline-grade). No agent ran the prompts. Live pass, calls, and rubric stay null until /eval in the IDE grades a finished worktree and the user approves a refresh. Execution of that refresh is the Cursor IDE subscription (runner ide, mode harness-ide), not an API key.",
   "thresholds": {
     "callsIncreasePct": 30,
     "rubricMayDrop": false,
     "passMayBecomeFail": false
   },
   "tasks": {
-    "docs-glossary-wave-budget": { "pass": null, "lane": null, "calls": null, "retries": null, "rubric": null, "wallMs": null },
-    "config-lint-rules": { "pass": null, "lane": null, "calls": null, "retries": null, "rubric": null, "wallMs": null },
-    "debug-mood-night": { "pass": null, "lane": null, "calls": null, "retries": null, "rubric": null, "wallMs": null }
+    "config-lint-rules": {
+      "pass": null,
+      "lane": null,
+      "calls": null,
+      "retries": null,
+      "rubric": null,
+      "wallMs": null,
+      "expectedLane": "S",
+      "live": false,
+      "fixtureHiddenPass": false,
+      "fixtureCheckPass": true
+    },
+    "debug-mood-night": {
+      "pass": null,
+      "lane": null,
+      "calls": null,
+      "retries": null,
+      "rubric": null,
+      "wallMs": null,
+      "expectedLane": "S",
+      "live": false,
+      "fixtureHiddenPass": false,
+      "fixtureCheckPass": true
+    },
+    "docs-glossary-wave-budget": {
+      "pass": null,
+      "lane": null,
+      "calls": null,
+      "retries": null,
+      "rubric": null,
+      "wallMs": null,
+      "expectedLane": "XS",
+      "live": false,
+      "fixtureHiddenPass": false,
+      "fixtureCheckPass": true
+    }
   }
 }

@@ -1,13 +1,17 @@
 #!/usr/bin/env node
-// Purpose: Fiore harness eval runner. Runs each task in evals/tasks/*.yaml through /ship in a fresh git
-//          worktree (local @cursor/sdk agent), grades the result, compares with evals/baseline.json.
-// Contract: docs/harness/README.md section 5. Format: evals/tasks/README.md.
-// Needs CURSOR_API_KEY in the environment (never read from a file). `--dry-run` and `--list` do not.
+// Purpose: grade Fiore harness evals. The Cursor IDE subscription executes each task
+//          (/eval, /ship, executor). This script only prepares a worktree, grades a
+//          finished one, or dry-grades the committed seed fixtures. No @cursor/sdk.
+//          No CURSOR_API_KEY. Contract: docs/harness/README.md section 5.
 //
 // Usage:
-//   node evals/run.mjs [<task-id> ...] [--concurrency <n>] [--model <id>] [--base <ref>]
-//                      [--timeout <seconds>] [--keep] [--json] [--dry-run] [--list]
-//                      [--write-baseline --yes]
+//   node evals/run.mjs --list | --dry-run
+//   node evals/run.mjs --prepare [<task-id> ...] [--base <ref>]
+//   node evals/run.mjs --grade --manifest <prepare.json> | --grade --worktree <path> [--task <id>]
+//   node evals/run.mjs --offline-grade [<task-id> ...] [--keep]
+//   node evals/run.mjs --cleanup --manifest <prepare.json>
+//   node evals/run.mjs --from <results.json> --write-baseline --yes
+//   add --json, --concurrency <n>, --write-baseline --yes on grade / offline-grade
 // Exit codes: 0 ok, 1 task failure or regression, 2 usage error, 3 budget exceeded (only).
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -31,16 +35,14 @@ const TASKS_DIR = path.join(HERE, "tasks");
 const RESULTS_DIR = path.join(HERE, "results");
 const BASELINE = path.join(HERE, "baseline.json");
 
-const DEFAULT_CONCURRENCY = 3;
-const MAX_CONCURRENCY = 5; // harness cap for local agents
-const DEFAULT_MODEL = "composer-2.5"; // orchestrator model; override with --model or FIORE_EVAL_MODEL
-const DEFAULT_TIMEOUT_S = 900;
+const MAX_CONCURRENCY = 5;
 const CALLS_REGRESSION_PCT = 30;
 const LANES = ["XS", "S", "M", "L"];
-// Files the harness itself writes inside a worktree; never counted as task changes.
-const IGNORED_CHANGE_GLOBS = [".harness/**", "logs/**", "target/**", "node_modules/**"];
+// .harness is grader/run metadata. eval-hidden is copied by the grader after the snapshot.
+const IGNORED_CHANGE_GLOBS = [".harness/**", "eval-hidden/**", "logs/**", "target/**", "node_modules/**"];
 
-// ---------------------------------------------------------------- utilities
+const OFFLINE_NOTE =
+  "Baseline v0 is a grader dry-run of the committed seed fixtures (method offline-grade). No agent ran the prompts. Live pass, calls, and rubric stay null until /eval in the IDE grades a finished worktree and the user approves a refresh. Execution of that refresh is the Cursor IDE subscription (runner ide, mode harness-ide), not an API key.";
 
 class UsageError extends Error {}
 
@@ -48,12 +50,11 @@ function log(msg) {
   process.stderr.write(`${msg}\n`);
 }
 
-function git(args, cwd = REPO, opts = {}) {
+function git(args, cwd = REPO) {
   return execFileSync("git", args, {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-    ...opts,
   }).trim();
 }
 
@@ -94,17 +95,24 @@ function matchesAny(file, globs) {
   return globs.some((g) => globToRegExp(g).test(file));
 }
 
+function normPath(file) {
+  return file.replaceAll("\\", "/");
+}
+
 function tail(text, n = 3000) {
   const s = String(text ?? "");
   return s.length > n ? `...${s.slice(-n)}` : s;
 }
 
-// Serializes git operations that take repo-wide locks (worktree add/remove).
 let gitLock = Promise.resolve();
 function withGitLock(fn) {
   const next = gitLock.then(fn, fn);
   gitLock = next.catch(() => {});
   return next;
+}
+
+function stampNow() {
+  return `${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
 // ---------------------------------------------------------------- minimal YAML subset
@@ -215,7 +223,6 @@ function parseYaml(text, file = "<yaml>") {
       if (indentOf(ln) !== indent || !/^\s*-(\s|$)/.test(ln)) break;
       const rest = ln.trim().slice(1).trim();
       if (/^[A-Za-z0-9_.-]+:(\s|$)/.test(rest)) {
-        // list item that opens a map: re-indent the line as a map entry and parse the map
         lines[pos] = `${" ".repeat(indent + 2)}${rest}`;
         out.push(parseMap(indent + 2));
       } else {
@@ -266,8 +273,6 @@ function parseYaml(text, file = "<yaml>") {
   return result ?? {};
 }
 
-// ---------------------------------------------------------------- task loading
-
 function loadTasks(filterIds) {
   if (!existsSync(TASKS_DIR)) throw new UsageError(`missing ${TASKS_DIR}`);
   const files = readdirSync(TASKS_DIR)
@@ -311,8 +316,6 @@ function validateTask(t, file) {
   need(["none", "quick", "full", undefined].includes(t.expected_judge), "expected_judge must be none|quick|full");
 }
 
-// ---------------------------------------------------------------- shell helpers
-
 let psExe;
 function powershell() {
   if (psExe) return psExe;
@@ -336,8 +339,6 @@ function runCheckFull(cwd) {
   return { code: r.status ?? 1, out: tail(`${r.stdout ?? ""}${r.stderr ?? ""}`) };
 }
 
-// ---------------------------------------------------------------- worktree handling
-
 function resolveBase(task, override, quiet = false) {
   const ref = override ?? task.base_commit;
   const sha = tryGit(["rev-parse", "--verify", `${ref}^{commit}`]);
@@ -355,13 +356,19 @@ function copyEntry(entry, wt) {
 }
 
 function listChangedFiles(wt, sinceSha) {
-  git(["add", "-A"], wt);
-  const out = git(["diff", "--cached", "--name-status", "--no-renames", sinceSha], wt);
   const changed = [];
+  const out = git(["diff", "--name-status", "--no-renames", sinceSha], wt);
   for (const line of out.split("\n").filter(Boolean)) {
     const [status, ...rest] = line.split("\t");
-    const file = rest.join("\t");
+    const file = normPath(rest.join("\t"));
     if (!matchesAny(file, IGNORED_CHANGE_GLOBS)) changed.push({ status, file });
+  }
+  const untracked = git(["ls-files", "--others", "--exclude-standard"], wt);
+  for (const raw of untracked.split("\n").filter(Boolean)) {
+    const file = normPath(raw);
+    if (!matchesAny(file, IGNORED_CHANGE_GLOBS) && !changed.some((c) => c.file === file)) {
+      changed.push({ status: "?", file });
+    }
   }
   return changed;
 }
@@ -373,17 +380,34 @@ async function createWorktree(task, base, stamp) {
     mkdirSync(path.dirname(wt), { recursive: true });
     git(["worktree", "add", "-b", branch, wt, base.sha]);
   });
-  let seedSha = base.sha;
-  if ((task.seed_files ?? []).length) {
-    for (const e of task.seed_files) copyEntry(e, wt);
-    git(["add", "-A"], wt);
-    git(
-      ["-c", "user.name=fiore-eval", "-c", "user.email=eval@fiore.invalid", "commit", "-q", "--no-verify", "-m", "eval: seed task files"],
-      wt,
-    );
-    seedSha = git(["rev-parse", "HEAD"], wt);
+  try {
+    let seedSha = base.sha;
+    if ((task.seed_files ?? []).length) {
+      for (const e of task.seed_files) copyEntry(e, wt);
+      git(["add", "-A"], wt);
+      // Throwaway seed commit in the eval worktree. Identity is per-command so repo config stays untouched.
+      git(
+        ["-c", "user.name=fiore-eval", "-c", "user.email=eval@fiore.invalid", "commit", "-m", "eval: seed task files"],
+        wt,
+      );
+      seedSha = git(["rev-parse", "HEAD"], wt);
+    }
+    const meta = {
+      taskId: task.id,
+      baseRef: base.ref,
+      baseSha: base.sha,
+      seedSha,
+      branch,
+      mode: "harness-ide",
+    };
+    const metaPath = path.join(wt, ".harness", "eval-meta.json");
+    mkdirSync(path.dirname(metaPath), { recursive: true });
+    writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+    return { wt, branch, seedSha, meta };
+  } catch (e) {
+    await removeWorktree(wt, branch);
+    throw e;
   }
-  return { wt, branch, seedSha };
 }
 
 async function removeWorktree(wt, branch) {
@@ -397,8 +421,6 @@ async function removeWorktree(wt, branch) {
     tryGit(["branch", "-D", branch]);
   });
 }
-
-// ---------------------------------------------------------------- run artifacts (best effort)
 
 function newestJson(dir) {
   if (!existsSync(dir)) return null;
@@ -414,156 +436,123 @@ function newestJson(dir) {
   }
 }
 
-function readRunState(wt) {
-  const r = newestJson(path.join(wt, ".harness", "runs"));
-  if (!r) return null;
-  const d = r.data;
-  const callsRaw = d.calls ?? d.callCount ?? d.subagentCalls;
-  const calls =
-    typeof callsRaw === "number"
-      ? callsRaw
-      : Array.isArray(callsRaw)
-        ? callsRaw.length
-        : typeof callsRaw?.total === "number"
-          ? callsRaw.total
-          : null;
-  const history = Array.isArray(d.history) ? d.history : Array.isArray(d.transitions) ? d.transitions : [];
-  const stateOf = (h) => (typeof h === "string" ? h : (h?.state ?? h?.to));
-  return {
-    runId: d.id ?? d.runId ?? r.name.replace(/\.json$/, ""),
-    lane: LANES.includes(d.lane) ? d.lane : null,
-    state: d.state ?? null,
-    calls,
-    debugEntries: history.filter((h) => stateOf(h) === "debug").length,
-    callRoles: Array.isArray(callsRaw) ? callsRaw.map((c) => c?.role ?? c) : [],
-  };
-}
-
-function readVerdict(wt) {
-  const p = path.join(wt, ".harness", "verdict.json");
+function readJson(p) {
   if (!existsSync(p)) return null;
   try {
-    const d = JSON.parse(readFileSync(p, "utf8"));
-    const score = Number(d.score ?? d.total);
-    return { verdict: d.verdict ?? null, score: Number.isFinite(score) ? score : null };
+    return JSON.parse(readFileSync(p, "utf8"));
   } catch {
     return null;
   }
 }
 
-// ---------------------------------------------------------------- the agent run
-
-async function loadSdk() {
-  try {
-    return await import("@cursor/sdk");
-  } catch (e) {
-    throw new UsageError(
-      `cannot load @cursor/sdk (${e.code ?? e.message}). Install it once: npm ci --prefix evals`,
-    );
-  }
+function readRunState(wt) {
+  const r = newestJson(path.join(wt, ".harness", "runs"));
+  if (!r) return null;
+  const d = r.data;
+  const calls = typeof d.calls === "number" ? d.calls : null;
+  const byRole = d.callsByRole && typeof d.callsByRole === "object" ? d.callsByRole : {};
+  const callLog = Array.isArray(d.callLog) ? d.callLog : [];
+  const roles = callLog.length
+    ? callLog.map((c) => c?.role).filter(Boolean)
+    : Object.entries(byRole).flatMap(([role, n]) => Array(Number(n) || 0).fill(role));
+  const history = Array.isArray(d.history) ? d.history : [];
+  const stateOf = (h) => (typeof h === "string" ? h : (h?.to ?? h?.state));
+  const judgeFromRole = Number(byRole.judge);
+  return {
+    runId: d.runId ?? d.id ?? r.name.replace(/\.json$/, ""),
+    lane: LANES.includes(d.lane) ? d.lane : null,
+    state: d.state ?? null,
+    calls,
+    debugEntries:
+      typeof d.debugEntries === "number" ? d.debugEntries : history.filter((h) => stateOf(h) === "debug").length,
+    callRoles: roles,
+    judgeCalls: Number.isFinite(judgeFromRole) ? judgeFromRole : roles.filter((role) => role === "judge").length,
+  };
 }
 
-function buildPrompt(task) {
-  return [
-    `/ship ${task.prompt.trim()}`,
-    "",
-    "(Eval run, non-interactive. Follow the ship skill in .cursor/skills/ship/SKILL.md exactly, including run-state and budgets. Do not ask questions; do not commit or push.",
-    "End your final reply with one line: `EVAL-RESULT lane=<XS|S|M|L> run=<run-id>`.)",
-  ].join("\n");
+function readVerdict(wt) {
+  const d = readJson(path.join(wt, ".harness", "verdict.json"));
+  if (!d) return null;
+  const score = Number(d.score ?? d.total);
+  return { verdict: d.verdict ?? null, score: Number.isFinite(score) ? score : null };
 }
 
-async function runAgent(sdk, task, ctx, wt) {
-  const stats = { calls: new Map(), text: "", status: "error", error: null, durationMs: 0, agentId: null, runId: null };
-  const started = Date.now();
-  const timeoutMs = (ctx.timeoutS ?? task.budget.max_wall_seconds ?? DEFAULT_TIMEOUT_S) * 1000;
-  const agent = await sdk.Agent.create({
-    apiKey: process.env.CURSOR_API_KEY,
-    model: { id: ctx.model },
-    name: `fiore-eval ${task.id}`,
-    local: { cwd: wt, settingSources: ["project"] },
-  });
-  try {
-    const run = await agent.send(buildPrompt(task));
-    stats.agentId = agent.agentId;
-    stats.runId = run.id;
-    log(`[${task.id}] started agent=${agent.agentId} run=${run.id}`);
-
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      run.cancel().catch(() => {});
-    }, timeoutMs);
-
-    const noteCall = (id, name, args) => {
-      if (name !== "task" || !id || stats.calls.has(id)) return;
-      const a = args && typeof args === "object" ? args : {};
-      stats.calls.set(id, String(a.subagent_type ?? a.subagentType ?? a.agent ?? "unknown"));
-    };
-    const consume = (async () => {
-      for await (const ev of run.stream()) {
-        if (ev.type === "tool_call") noteCall(ev.call_id, ev.name, ev.args);
-        else if (ev.type === "assistant") {
-          for (const b of ev.message.content) {
-            if (b.type === "text") stats.text += b.text;
-            else if (b.type === "tool_use") noteCall(b.id, b.name, b.input);
-          }
-        }
-      }
-    })().catch((e) => {
-      stats.error = `stream: ${e.message}`;
-    });
-
-    const result = await run.wait();
-    await consume;
-    clearTimeout(timer);
-    stats.status = timedOut ? "timeout" : result.status;
-    if (result.error && !stats.error) stats.error = result.error.message;
-    stats.finalText = tail(result.result ?? stats.text, 2000);
-    stats.usage = result.usage ?? null;
-  } finally {
-    stats.durationMs = Date.now() - started;
-    await agent[Symbol.asyncDispose]().catch(() => {});
-  }
-  return stats;
+function readEvalResult(wt) {
+  const p = path.join(wt, ".harness", "eval-result.txt");
+  if (!existsSync(p)) return null;
+  const text = readFileSync(p, "utf8");
+  const m = text.match(/EVAL-RESULT\s+lane=(XS|S|M|L)(?:\s+run=(\S+))?/);
+  if (!m) return { lane: null, run: null };
+  return { lane: m[1], run: m[2] ?? null };
 }
 
-// ---------------------------------------------------------------- grading
+function readMeta(wt) {
+  return readJson(path.join(wt, ".harness", "eval-meta.json"));
+}
 
+// offline: agent-dependent graders are informational. Hidden tests and check.ps1 still run on the seed.
 function grade(task, ctx) {
-  const { stats, changed, runState, verdict, checkRes, hiddenRes } = ctx;
+  const { changed, runState, verdict, checkRes, hiddenRes, evalResult, mode } = ctx;
+  const offline = mode === "offline-grade";
   const g = [];
   const add = (name, pass, detail) => g.push({ name, pass, detail });
   const enabled = (k) => task.graders?.[k] !== false;
 
-  add("agent_finished", stats.status === "finished", stats.status + (stats.error ? `: ${stats.error}` : ""));
+  if (offline) {
+    add("agent_finished", null, "offline-grade of seed fixtures; no IDE agent ran");
+  } else {
+    const state = runState?.state ?? null;
+    const finished = state === "done" || (!runState && Boolean(evalResult?.lane));
+    add(
+      "agent_finished",
+      finished,
+      finished ? `state ${state ?? "eval-result"}` : `state ${state ?? "missing"} (expected done, or .harness/eval-result.txt when no run file exists)`,
+    );
+  }
 
   if (enabled("check_full")) {
     add("check_full", checkRes.skipped ? null : checkRes.code === 0, checkRes.skipped ? checkRes.out : `exit ${checkRes.code}`);
   }
+  let hiddenPass = null;
   if (enabled("hidden_tests") && (task.hidden_commands ?? []).length) {
     const bad = hiddenRes.find((h) => h.code !== 0);
-    add("hidden_tests", !bad, bad ? `failed: ${bad.command}` : `${hiddenRes.length} command(s) passed`);
+    hiddenPass = !bad;
+    add("hidden_tests", hiddenPass, bad ? `failed: ${bad.command}` : `${hiddenRes.length} command(s) passed`);
   }
 
-  const outside = (task.allowed_paths ?? []).length
-    ? changed.filter((c) => !matchesAny(c.file, task.allowed_paths))
-    : [];
-  const deletedProtected = changed.filter((c) => c.status === "D" && matchesAny(c.file, task.protected_paths ?? []));
-  const scopeBad = [...outside, ...deletedProtected];
-  const noChange = changed.length === 0;
-  add(
-    "scope",
-    !scopeBad.length && !noChange,
-    noChange ? "no files changed" : scopeBad.length ? `out of scope: ${scopeBad.map((c) => c.file).join(", ")}` : `${changed.length} file(s) changed`,
-  );
+  if (offline) {
+    add("scope", null, changed.length ? `${changed.length} file(s) differ from the seed (unexpected for offline-grade)` : "seed fixtures only; scope is graded on a live IDE run");
+  } else {
+    const outside = (task.allowed_paths ?? []).length
+      ? changed.filter((c) => !matchesAny(c.file, task.allowed_paths))
+      : [];
+    const deletedProtected = changed.filter((c) => c.status === "D" && matchesAny(c.file, task.protected_paths ?? []));
+    const scopeBad = [...outside, ...deletedProtected];
+    const noChange = changed.length === 0;
+    add(
+      "scope",
+      !scopeBad.length && !noChange,
+      noChange
+        ? "no files changed"
+        : scopeBad.length
+          ? `out of scope: ${scopeBad.map((c) => c.file).join(", ")}`
+          : `${changed.length} file(s) changed`,
+    );
+  }
 
-  const lane = runState?.lane ?? stats.text.match(/EVAL-RESULT\s+lane=(XS|S|M|L)/)?.[1] ?? null;
-  if (enabled("lane_correct")) add("lane_correct", lane === task.expected_lane, `expected ${task.expected_lane}, got ${lane ?? "unknown"}`);
+  const lane = offline ? null : (runState?.lane ?? evalResult?.lane ?? null);
+  if (offline) {
+    add("lane_correct", null, `expected ${task.expected_lane}; lane comes from .harness/runs or eval-result.txt on a live run`);
+  } else if (enabled("lane_correct")) {
+    add("lane_correct", lane === task.expected_lane, `expected ${task.expected_lane}, got ${lane ?? "unknown"}`);
+  }
 
-  const roles = [...stats.calls.values()];
-  const judgeCalls = roles.filter((r) => r === "judge").length;
+  const roles = runState?.callRoles ?? [];
+  const judgeCalls = runState?.judgeCalls ?? roles.filter((r) => r === "judge").length;
   const expectedJudge = task.expected_judge ?? (task.expected_lane === "XS" ? "none" : "full");
-  if (expectedJudge === "none") {
+  if (offline) {
+    add("judge_policy", null, "judge artifacts are graded on a live IDE run");
+  } else if (expectedJudge === "none") {
     add("judge_policy", judgeCalls === 0, judgeCalls === 0 ? "judge skipped as expected" : `judge ran ${judgeCalls}x but expected none`);
   } else if (task.graders?.rubric_min != null) {
     const min = task.graders.rubric_min;
@@ -572,92 +561,77 @@ function grade(task, ctx) {
   }
 
   const missingRoles = (task.expected_roles ?? []).filter((r) => !roles.includes(r));
-  if ((task.expected_roles ?? []).length) {
+  if (offline) {
+    if ((task.expected_roles ?? []).length) add("routing", null, "roles are graded on a live IDE run");
+  } else if ((task.expected_roles ?? []).length) {
     add("routing", !missingRoles.length, missingRoles.length ? `role(s) never called: ${missingRoles.join(", ")}` : `called: ${[...new Set(roles)].join(", ")}`);
   }
 
-  const calls = Math.max(stats.calls.size, runState?.calls ?? 0);
-  const retries = Math.max(roles.filter((r) => r === "debugger").length, runState?.debugEntries ?? 0);
+  const calls = offline ? null : (runState?.calls ?? null);
+  const retries = offline ? null : Math.max(roles.filter((r) => r === "debugger").length, runState?.debugEntries ?? 0);
   const escalated = runState?.state === "escalate";
-  const overCalls = calls > task.budget.max_calls;
-  const overRetries = task.budget.max_retries != null && retries > task.budget.max_retries;
-  if (enabled("within_budget")) {
-    add("within_budget", !overCalls && !overRetries && !escalated, `calls ${calls}/${task.budget.max_calls}, retries ${retries}/${task.budget.max_retries ?? "-"}${escalated ? ", escalated" : ""}`);
+  const overCalls = !offline && (calls == null || calls > task.budget.max_calls);
+  const overRetries = !offline && task.budget.max_retries != null && retries > task.budget.max_retries;
+  if (offline) {
+    add("within_budget", null, "budget is graded on a live IDE run");
+  } else if (enabled("within_budget")) {
+    add(
+      "within_budget",
+      !overCalls && !overRetries && !escalated,
+      `calls ${calls ?? "?"}/${task.budget.max_calls}, retries ${retries}/${task.budget.max_retries ?? "-"}${escalated ? ", escalated" : ""}`,
+    );
   }
 
-  const wallS = Math.round(stats.durationMs / 1000);
-  const maxWall = task.budget.max_wall_seconds;
-  g.push({ name: "wall_time", pass: null, informational: true, detail: `${wallS}s${maxWall ? ` (budget ${maxWall}s)` : ""}` });
+  g.push({ name: "wall_time", pass: null, informational: true, detail: "not measured (the agent runs in the IDE)" });
 
-  const pass = g.every((x) => x.pass !== false);
+  const livePass = g.every((x) => x.pass !== false);
   return {
-    pass,
+    pass: offline ? null : livePass,
+    live: !offline,
     graders: g,
-    metrics: { lane, calls, retries, rubric: verdict?.score ?? null, wallMs: stats.durationMs },
-    budgetExceeded: overCalls || overRetries || escalated,
+    metrics: {
+      lane,
+      calls,
+      retries,
+      rubric: offline ? null : (verdict?.score ?? null),
+      wallMs: null,
+    },
+    fixture: {
+      hiddenPass,
+      checkPass: checkRes.skipped ? null : checkRes.code === 0,
+    },
+    budgetExceeded: !offline && (overCalls || overRetries || escalated),
     roles,
   };
 }
 
-// ---------------------------------------------------------------- one task end to end
-
-async function evalTask(sdk, task, ctx) {
-  const stamp = `${ctx.stamp}-${Math.random().toString(36).slice(2, 6)}`;
-  const base = resolveBase(task, ctx.baseOverride);
-  const out = { id: task.id, base: { ref: base.ref, sha: base.sha, fallback: base.fallback }, expectedLane: task.expected_lane };
-  let wtInfo;
-  try {
-    wtInfo = await createWorktree(task, base, stamp);
-    out.worktree = ctx.keep ? wtInfo.wt : undefined;
-    const stats = await runAgent(sdk, task, ctx, wtInfo.wt);
-
-    // Snapshot the agent's work before the hidden files exist.
-    const changed = listChangedFiles(wtInfo.wt, wtInfo.seedSha);
-    for (const e of task.hidden_tests ?? []) copyEntry(e, wtInfo.wt);
-    const checkRes = runCheckFull(wtInfo.wt);
-    const hiddenRes = (task.hidden_commands ?? []).map((command) => ({ command, ...runCmd(command, wtInfo.wt) }));
-    const runState = readRunState(wtInfo.wt);
-    const verdict = readVerdict(wtInfo.wt);
-
-    const graded = grade(task, { stats, changed, runState, verdict, checkRes, hiddenRes });
-    Object.assign(out, graded, {
-      status: stats.status,
-      agentId: stats.agentId,
-      runId: runState?.runId ?? stats.runId,
-      changed,
-      finalText: stats.finalText,
-      checkOutput: checkRes.out,
-      hiddenOutput: hiddenRes.map((h) => ({ command: h.command, code: h.code, out: h.out })),
-      usage: stats.usage,
-    });
-  } catch (e) {
-    out.pass = false;
-    out.status = "error";
-    out.error = e.message;
-    out.graders = [{ name: "runner", pass: false, detail: e.message }];
-    out.metrics = { lane: null, calls: null, retries: null, rubric: null, wallMs: null };
-  } finally {
-    if (wtInfo && !ctx.keep) await removeWorktree(wtInfo.wt, wtInfo.branch);
-  }
-  log(`[${task.id}] ${out.pass ? "PASS" : "FAIL"}`);
-  return out;
+async function gradeWorktree(task, wt, mode) {
+  const meta = readMeta(wt);
+  const seedSha = meta?.seedSha ?? tryGit(["rev-parse", "HEAD"], wt);
+  if (!seedSha) throw new Error(`cannot resolve seed commit in ${wt}`);
+  const changed = listChangedFiles(wt, seedSha);
+  for (const e of task.hidden_tests ?? []) copyEntry(e, wt);
+  const checkRes = runCheckFull(wt);
+  const hiddenRes = (task.hidden_commands ?? []).map((command) => ({ command, ...runCmd(command, wt) }));
+  const runState = readRunState(wt);
+  const verdict = readVerdict(wt);
+  const evalResult = readEvalResult(wt);
+  const graded = grade(task, { changed, runState, verdict, checkRes, hiddenRes, evalResult, mode });
+  return {
+    id: task.id,
+    base: meta ? { ref: meta.baseRef, sha: meta.baseSha, fallback: false } : null,
+    expectedLane: task.expected_lane,
+    worktree: wt,
+    branch: meta?.branch ?? null,
+    seedSha,
+    changed,
+    status: mode === "offline-grade" ? "offline-grade" : (runState?.state ?? "graded"),
+    runId: runState?.runId ?? evalResult?.run ?? null,
+    checkOutput: checkRes.out,
+    hiddenOutput: hiddenRes.map((h) => ({ command: h.command, code: h.code, out: h.out })),
+    ...graded,
+  };
 }
-
-async function pool(items, limit, worker) {
-  const results = new Array(items.length);
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (next < items.length) {
-        const i = next++;
-        results[i] = await worker(items[i]);
-      }
-    }),
-  );
-  return results;
-}
-
-// ---------------------------------------------------------------- baseline comparison
 
 function loadBaseline() {
   try {
@@ -673,7 +647,11 @@ function compareToBaseline(baseline, results) {
   for (const r of results) {
     const b = baseline?.tasks?.[r.id];
     if (!b || b.pass == null) {
-      notes.push(`${r.id}: no baseline yet (candidate baseline)`);
+      notes.push(`${r.id}: no live baseline yet (pass is null until an IDE /eval is approved)`);
+      continue;
+    }
+    if (r.pass == null) {
+      notes.push(`${r.id}: this run has no live pass/fail (offline-grade); not compared`);
       continue;
     }
     if (b.pass && !r.pass) regressions.push({ task: r.id, metric: "pass", from: true, to: false });
@@ -690,25 +668,296 @@ function compareToBaseline(baseline, results) {
 
 function writeBaseline(results, meta) {
   const existing = loadBaseline() ?? {};
-  const tasks = { ...(existing.tasks ?? {}) };
+  const tasks = {};
   for (const r of results) {
     tasks[r.id] = {
       pass: r.pass,
-      lane: r.metrics.lane,
-      calls: r.metrics.calls,
-      retries: r.metrics.retries,
-      rubric: r.metrics.rubric,
-      wallMs: r.metrics.wallMs,
+      lane: r.metrics?.lane ?? null,
+      calls: r.metrics?.calls ?? null,
+      retries: r.metrics?.retries ?? null,
+      rubric: r.metrics?.rubric ?? null,
+      wallMs: r.metrics?.wallMs ?? null,
+      expectedLane: r.expectedLane ?? null,
+      live: r.live === true,
+      fixtureHiddenPass: r.fixture?.hiddenPass ?? null,
+      fixtureCheckPass: r.fixture?.checkPass ?? null,
     };
   }
-  const next = { ...existing, version: 1, recorded: new Date().toISOString(), ...meta, tasks };
+  for (const [id, prev] of Object.entries(existing.tasks ?? {})) {
+    if (!tasks[id]) tasks[id] = prev;
+  }
+  const next = {
+    version: 1,
+    status: "recorded",
+    recorded: new Date().toISOString(),
+    approvedBy: meta.approvedBy ?? null,
+    method: meta.method,
+    mode: meta.mode ?? "harness-ide",
+    runner: meta.runner ?? "ide",
+    sdk: null,
+    model: meta.model ?? null,
+    base: meta.base ?? null,
+    note: meta.note,
+    thresholds: existing.thresholds ?? {
+      callsIncreasePct: 30,
+      rubricMayDrop: false,
+      passMayBecomeFail: false,
+    },
+    tasks,
+  };
   writeFileSync(BASELINE, `${JSON.stringify(next, null, 2)}\n`);
 }
 
-// ---------------------------------------------------------------- CLI
+function resultsPath(stamp) {
+  mkdirSync(RESULTS_DIR, { recursive: true });
+  const day = new Date().toISOString().slice(0, 10);
+  return path.join(RESULTS_DIR, `${day}-${stamp.slice(8, 14)}.json`);
+}
+
+function writeResults(file, payload) {
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(payload, null, 2)}\n`);
+}
+
+function printSummary(results, cmp) {
+  const pad = (s, n) => String(s).padEnd(n);
+  const live = results.filter((r) => r.pass != null);
+  const pass = live.filter((r) => r.pass).length;
+  const fail = live.filter((r) => !r.pass).length;
+  const offline = results.length - live.length;
+  console.log(`Eval ${new Date().toISOString().slice(0, 10)}: ${results.length} tasks, ${pass} pass, ${fail} fail, ${offline} offline`);
+  console.log(`${pad("task", 28)}${pad("lane(exp/act)", 15)}${pad("calls", 8)}${pad("rubric", 8)}result`);
+  for (const r of results) {
+    const label = r.pass == null ? "OFFLINE" : r.pass ? "PASS" : "FAIL";
+    console.log(
+      `${pad(r.id, 28)}${pad(`${r.expectedLane}/${r.metrics?.lane ?? "-"}`, 15)}${pad(r.metrics?.calls ?? "-", 8)}${pad(r.metrics?.rubric ?? "-", 8)}${label}`,
+    );
+    for (const g of r.graders.filter((x) => x.pass === false)) {
+      console.log(`    ${r.pass == null ? "fixture" : "x"} ${g.name}: ${g.detail}`);
+    }
+  }
+  for (const n of cmp.notes) console.log(`note: ${n}`);
+  console.log(`Regressions: ${cmp.regressions.length ? cmp.regressions.map((x) => `${x.task} ${x.metric} ${x.from}->${x.to}`).join("; ") : "none"}`);
+}
+
+function exitCode(results, cmp) {
+  if (cmp.regressions.length) return 1;
+  const hard = results.filter((r) => r.pass === false);
+  if (!hard.length) return 0;
+  const onlyBudget = hard.every(
+    (r) => r.budgetExceeded && r.graders.filter((g) => g.pass === false).every((g) => g.name === "within_budget"),
+  );
+  return onlyBudget ? 3 : 1;
+}
+
+async function pool(items, limit, worker) {
+  const results = new Array(items.length);
+  let next = 0;
+  const n = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(
+    Array.from({ length: n }, async () => {
+      while (next < items.length) {
+        const i = next++;
+        results[i] = await worker(items[i]);
+      }
+    }),
+  );
+  return results;
+}
+
+function metaFor(method, results, extra = {}) {
+  return {
+    method,
+    mode: "harness-ide",
+    runner: "ide",
+    sdk: null,
+    model: null,
+    base: results[0]?.base?.sha ?? results.find((r) => r.base?.sha)?.base?.sha ?? null,
+    ...extra,
+  };
+}
+
+async function publish(results, opts, meta) {
+  const baseline = loadBaseline();
+  const cmp = compareToBaseline(baseline, results);
+  const outFile = resultsPath(opts.stamp ?? stampNow());
+  writeResults(outFile, { date: new Date().toISOString(), ...meta, results, comparison: cmp });
+  if (opts.writeBaseline) {
+    writeBaseline(results, meta);
+    log(`baseline written: ${BASELINE}`);
+  }
+  if (opts.json) console.log(JSON.stringify({ file: outFile, results, comparison: cmp }, null, 2));
+  else {
+    printSummary(results, cmp);
+    console.log(`results: ${outFile}`);
+  }
+  return exitCode(results, cmp);
+}
+
+async function prepare(opts) {
+  const tasks = loadTasks(opts.ids);
+  const stamp = opts.stamp;
+  const entries = [];
+  for (const task of tasks) {
+    const base = resolveBase(task, opts.base);
+    const info = await createWorktree(task, base, stamp);
+    entries.push({
+      id: task.id,
+      worktree: info.wt,
+      branch: info.branch,
+      seedSha: info.seedSha,
+      baseSha: base.sha,
+      baseRef: base.ref,
+      fallback: base.fallback,
+      expectedLane: task.expected_lane,
+      prompt: task.prompt.trim(),
+    });
+    log(`[${task.id}] worktree ${info.wt}`);
+  }
+  const manifest = { stamp, mode: "harness-ide", runner: "ide", tasks: entries };
+  const file = path.join(RESULTS_DIR, `prepare-${stamp}.json`);
+  writeResults(file, manifest);
+  console.log(file);
+  console.log("Execute each prompt with /ship in that worktree (IDE subscription). Then: node evals/run.mjs --grade --manifest <file>");
+  return 0;
+}
+
+async function cleanup(opts) {
+  const manifest = readJson(opts.manifest);
+  if (!manifest?.tasks) throw new UsageError(`cannot read manifest ${opts.manifest}`);
+  for (const t of manifest.tasks) {
+    if (t.worktree && t.branch) await removeWorktree(t.worktree, t.branch);
+  }
+  log(`removed ${manifest.tasks.length} worktree(s)`);
+  return 0;
+}
+
+async function gradeManifest(opts) {
+  const tasks = loadTasks([]);
+  let jobs;
+  if (opts.manifest) {
+    const manifest = readJson(opts.manifest);
+    if (!manifest?.tasks) throw new UsageError(`cannot read manifest ${opts.manifest}`);
+    jobs = manifest.tasks.map((entry) => {
+      const task = tasks.find((t) => t.id === entry.id);
+      if (!task) throw new UsageError(`manifest task "${entry.id}" is not in evals/tasks`);
+      if (!entry.worktree || !existsSync(entry.worktree)) throw new UsageError(`worktree missing for ${entry.id}: ${entry.worktree}`);
+      return { task, wt: entry.worktree };
+    });
+  } else if (opts.worktree) {
+    if (!existsSync(opts.worktree)) throw new UsageError(`worktree not found: ${opts.worktree}`);
+    const meta = readMeta(opts.worktree);
+    const id = opts.task ?? meta?.taskId;
+    if (!id) throw new UsageError("--grade --worktree needs --task when .harness/eval-meta.json has no taskId");
+    if (opts.task && meta?.taskId && opts.task !== meta.taskId) {
+      throw new UsageError(`--task ${opts.task} does not match worktree meta taskId ${meta.taskId}`);
+    }
+    const task = tasks.find((t) => t.id === id);
+    if (!task) throw new UsageError(`unknown task id: ${id}`);
+    jobs = [{ task, wt: opts.worktree }];
+  } else {
+    throw new UsageError("--grade needs --manifest <file> or --worktree <path>");
+  }
+  const results = await pool(jobs, opts.concurrency, async ({ task, wt }) => {
+    try {
+      const graded = await gradeWorktree(task, wt, "harness-ide");
+      log(`[${task.id}] ${graded.pass ? "PASS" : "FAIL"}`);
+      return graded;
+    } catch (e) {
+      log(`[${task.id}] FAIL`);
+      return {
+        id: task.id,
+        expectedLane: task.expected_lane,
+        pass: false,
+        live: true,
+        status: "error",
+        error: e.message,
+        graders: [{ name: "runner", pass: false, detail: e.message }],
+        metrics: { lane: null, calls: null, retries: null, rubric: null, wallMs: null },
+        fixture: { hiddenPass: null, checkPass: null },
+        base: null,
+      };
+    }
+  });
+  const meta = metaFor("harness-ide", results, {
+    note: "Live IDE grade. The agent ran in the Cursor IDE; this file is the grader output.",
+    approvedBy: opts.writeBaseline ? "user (--write-baseline --yes)" : null,
+  });
+  return publish(results, opts, meta);
+}
+
+async function offlineGrade(opts) {
+  const tasks = loadTasks(opts.ids);
+  const stamp = opts.stamp;
+  const results = await pool(tasks, opts.concurrency, async (task) => {
+    const base = resolveBase(task, opts.base);
+    let info;
+    try {
+      info = await createWorktree(task, base, `${stamp}-${task.id.slice(0, 8)}`);
+      const graded = await gradeWorktree(task, info.wt, "offline-grade");
+      graded.base = { ref: base.ref, sha: base.sha, fallback: base.fallback };
+      log(`[${task.id}] OFFLINE hidden=${graded.fixture.hiddenPass} check=${graded.fixture.checkPass}`);
+      return graded;
+    } catch (e) {
+      log(`[${task.id}] OFFLINE error`);
+      return {
+        id: task.id,
+        expectedLane: task.expected_lane,
+        pass: null,
+        live: false,
+        status: "error",
+        error: e.message,
+        graders: [{ name: "runner", pass: false, detail: e.message }],
+        metrics: { lane: null, calls: null, retries: null, rubric: null, wallMs: null },
+        fixture: { hiddenPass: null, checkPass: null },
+        base: { ref: base.ref, sha: base.sha, fallback: base.fallback },
+      };
+    } finally {
+      if (info && !opts.keep) await removeWorktree(info.wt, info.branch);
+    }
+  });
+  const meta = metaFor("offline-grade", results, {
+    note: OFFLINE_NOTE,
+    approvedBy: opts.writeBaseline ? "user directive 2026-11-07" : null,
+  });
+  return publish(results, opts, meta);
+}
+
+function fromResults(opts) {
+  const doc = readJson(opts.from);
+  if (!doc?.results) throw new UsageError(`cannot read results ${opts.from}`);
+  writeBaseline(doc.results, {
+    method: doc.method ?? "harness-ide",
+    mode: doc.mode ?? "harness-ide",
+    runner: doc.runner ?? "ide",
+    model: doc.model ?? null,
+    base: doc.base ?? null,
+    note: doc.note ?? "Recorded from an existing results file.",
+    approvedBy: "user (--write-baseline --yes)",
+  });
+  log(`baseline written from ${opts.from}: ${BASELINE}`);
+  return 0;
+}
+
+const HELP = `Usage: node evals/run.mjs <mode> [<task-id> ...]
+
+Modes (this process never calls an agent and never reads an API key):
+  --list                         list tasks
+  --dry-run                      validate task YAML
+  --prepare                      cut worktrees, copy seeds, write a manifest
+  --grade --manifest <file>      grade worktrees from --prepare
+  --grade --worktree <path>      grade one finished worktree (--task if no meta)
+  --offline-grade                grade committed seed fixtures; live metrics stay null
+  --cleanup --manifest <file>    remove worktrees from --prepare
+  --from <results.json>          with --write-baseline --yes, record that file
+
+Flags: --base <ref>  --concurrency <n>  --keep  --json  --write-baseline --yes
+Execute tasks with /eval in the IDE (subscription). See .cursor/skills/eval/SKILL.md.
+`;
 
 function parseArgs(argv) {
-  const o = { ids: [], concurrency: DEFAULT_CONCURRENCY, model: process.env.FIORE_EVAL_MODEL || DEFAULT_MODEL };
+  const o = { ids: [], concurrency: 1, stamp: stampNow() };
+  const modes = [];
   const val = (i, flag) => {
     if (i + 1 >= argv.length) throw new UsageError(`${flag} needs a value`);
     return argv[i + 1];
@@ -716,13 +965,19 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--concurrency") o.concurrency = Number(val(i++, a));
-    else if (a === "--model") o.model = val(i++, a);
     else if (a === "--base") o.base = val(i++, a);
-    else if (a === "--timeout") o.timeoutS = Number(val(i++, a));
+    else if (a === "--worktree") o.worktree = val(i++, a);
+    else if (a === "--manifest") o.manifest = val(i++, a);
+    else if (a === "--task") o.task = val(i++, a);
+    else if (a === "--from") o.from = val(i++, a);
     else if (a === "--keep") o.keep = true;
     else if (a === "--json") o.json = true;
-    else if (a === "--dry-run") o.dryRun = true;
-    else if (a === "--list") o.list = true;
+    else if (a === "--dry-run") modes.push("dry-run");
+    else if (a === "--list") modes.push("list");
+    else if (a === "--prepare") modes.push("prepare");
+    else if (a === "--grade") modes.push("grade");
+    else if (a === "--offline-grade") modes.push("offline-grade");
+    else if (a === "--cleanup") modes.push("cleanup");
     else if (a === "--write-baseline") o.writeBaseline = true;
     else if (a === "--yes") o.yes = true;
     else if (a === "-h" || a === "--help") o.help = true;
@@ -734,37 +989,30 @@ function parseArgs(argv) {
     log(`warn: concurrency capped at ${MAX_CONCURRENCY}`);
     o.concurrency = MAX_CONCURRENCY;
   }
-  if (o.timeoutS != null && !(o.timeoutS > 0)) throw new UsageError("--timeout must be > 0 seconds");
   if (o.writeBaseline && !o.yes) {
     throw new UsageError("--write-baseline requires --yes (the baseline changes only after the user approves)");
   }
-  return o;
-}
-
-function printSummary(results, cmp) {
-  const pad = (s, n) => String(s).padEnd(n);
-  const pass = results.filter((r) => r.pass).length;
-  console.log(`Eval ${new Date().toISOString().slice(0, 10)}: ${results.length} tasks, ${pass} pass, ${results.length - pass} fail`);
-  console.log(`${pad("task", 28)}${pad("lane(exp/act)", 15)}${pad("calls", 7)}${pad("rubric", 8)}result`);
-  for (const r of results) {
-    console.log(
-      `${pad(r.id, 28)}${pad(`${r.expectedLane}/${r.metrics.lane ?? "?"}`, 15)}${pad(r.metrics.calls ?? "-", 7)}${pad(r.metrics.rubric ?? "-", 8)}${r.pass ? "PASS" : "FAIL"}`,
-    );
-    for (const g of r.graders.filter((x) => x.pass === false)) console.log(`    x ${g.name}: ${g.detail}`);
+  const unique = [...new Set(modes)];
+  if (unique.length > 1) throw new UsageError(`choose one mode, got ${unique.join(", ")}`);
+  o.mode = unique[0] ?? (o.from ? "from" : null);
+  if (o.writeBaseline && o.mode && !["grade", "offline-grade", "from"].includes(o.mode)) {
+    throw new UsageError("--write-baseline is only valid with --grade, --offline-grade, or --from");
   }
-  for (const n of cmp.notes) console.log(`note: ${n}`);
-  console.log(`Regressions: ${cmp.regressions.length ? cmp.regressions.map((x) => `${x.task} ${x.metric} ${x.from}->${x.to}`).join("; ") : "none"}`);
+  if (o.mode === "from" && !o.writeBaseline) throw new UsageError("--from requires --write-baseline --yes");
+  if (o.mode === "cleanup" && !o.manifest) throw new UsageError("--cleanup needs --manifest <file>");
+  return o;
 }
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
-    console.log("Usage: node evals/run.mjs [<task-id> ...] [--concurrency n] [--model id] [--base ref] [--timeout s] [--keep] [--json] [--dry-run] [--list] [--write-baseline --yes]\nNeeds CURSOR_API_KEY in the environment (except --dry-run/--list).");
+    console.log(HELP);
     return 0;
   }
-  const tasks = loadTasks(opts.ids);
+  if (!opts.mode) throw new UsageError(`evals/run.mjs only grades. Execute tasks with /eval in the IDE.\n${HELP}`);
 
-  if (opts.list || opts.dryRun) {
+  if (opts.mode === "list" || opts.mode === "dry-run") {
+    const tasks = loadTasks(opts.ids);
     for (const t of tasks) {
       const base = (() => {
         try {
@@ -775,41 +1023,15 @@ async function main() {
       })();
       console.log(`${t.id}  lane=${t.expected_lane}  judge=${t.expected_judge ?? "-"}  budget=${t.budget.max_calls}calls  base=${t.base_commit}${base?.fallback ? " (unresolved)" : ""}`);
     }
-    if (opts.dryRun) log(`dry run ok: ${tasks.length} task(s) parsed and validated; nothing executed`);
+    if (opts.mode === "dry-run") log(`dry run ok: ${tasks.length} task(s) parsed and validated; nothing executed`);
     return 0;
   }
-
-  if (!process.env.CURSOR_API_KEY) {
-    throw new UsageError("CURSOR_API_KEY is not set in the environment (it is never read from a file)");
-  }
-  const dirty = tryGit(["status", "--porcelain", "--", ".cursor", "docs/harness", "scripts", "AGENTS.md"]);
-  if (dirty) log("warn: uncommitted harness files are NOT present in eval worktrees (they are cut from a commit). Commit or tag first.");
-
-  const sdk = await loadSdk();
-  const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
-  log(`running ${tasks.length} task(s), concurrency ${opts.concurrency}, model ${opts.model}`);
-  const results = await pool(tasks, opts.concurrency, (t) => evalTask(sdk, t, { ...opts, baseOverride: opts.base, stamp }));
-
-  const baseline = loadBaseline();
-  const cmp = compareToBaseline(baseline, results);
-  mkdirSync(RESULTS_DIR, { recursive: true });
-  const outFile = path.join(RESULTS_DIR, `${new Date().toISOString().slice(0, 10)}-${stamp.slice(8)}.json`);
-  const meta = { sdk: "@cursor/sdk", model: opts.model, base: results[0]?.base?.sha ?? null };
-  writeFileSync(outFile, `${JSON.stringify({ date: new Date().toISOString(), ...meta, results, comparison: cmp }, null, 2)}\n`);
-
-  if (opts.writeBaseline) {
-    writeBaseline(results, meta);
-    log(`baseline written: ${BASELINE}`);
-  }
-  if (opts.json) console.log(JSON.stringify({ file: outFile, results, comparison: cmp }, null, 2));
-  else {
-    printSummary(results, cmp);
-    console.log(`results: ${outFile}`);
-  }
-
-  const failed = results.some((r) => !r.pass) || cmp.regressions.length > 0;
-  const onlyBudget = failed && results.filter((r) => !r.pass).every((r) => r.budgetExceeded && r.graders.filter((g) => g.pass === false).every((g) => g.name === "within_budget")) && cmp.regressions.length === 0;
-  return failed ? (onlyBudget ? 3 : 1) : 0;
+  if (opts.mode === "prepare") return prepare(opts);
+  if (opts.mode === "cleanup") return cleanup(opts);
+  if (opts.mode === "grade") return gradeManifest(opts);
+  if (opts.mode === "offline-grade") return offlineGrade(opts);
+  if (opts.mode === "from") return fromResults(opts);
+  throw new UsageError(`unknown mode ${opts.mode}`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -826,4 +1048,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   );
 }
 
-export { parseYaml, loadTasks, createWorktree, removeWorktree, listChangedFiles, grade, readRunState, copyEntry, runCmd, runCheckFull, globToRegExp };
+export {
+  parseYaml,
+  loadTasks,
+  createWorktree,
+  removeWorktree,
+  listChangedFiles,
+  grade,
+  readRunState,
+  copyEntry,
+  runCmd,
+  runCheckFull,
+  globToRegExp,
+};

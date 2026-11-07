@@ -14,7 +14,7 @@ last-verified: 2026-11-07
 Chicken-and-egg: the stop gates demand an approved proposal and an eval run for harness edits, but Phase 0 is what creates the harness, the eval suite and its baseline.
 
 - Phase 0 intentionally creates `.cursor/**`, `docs/harness/**`, `scripts/harness/**`, `evals/**`.
-- `evals/baseline.json` is a placeholder (`status: placeholder`, `recorded: null`); the real one is recorded in W0.2 (`w02-verify`).
+- `evals/baseline.json` started as a placeholder (`status: placeholder`, `recorded: null`). W0.2 records it without an API key (see Eval note and proposal 002).
 
 ## Scope
 Creation and edits of the initial harness through W0.2:
@@ -30,7 +30,7 @@ Approve the initial bootstrap only. Every harness edit after W0.2 needs its own 
 The stop gates stop blocking Phase 0 completion. The hook waives the eval and proposal gates while bootstrap is active (see Eval note).
 
 ## Eval note
-No baseline exists yet, so there is nothing to compare with. W0.2 records the first one with `node evals/run.mjs --write-baseline --yes`. After that, delete `.harness/BOOTSTRAP` so the gates become enforcing, and commit with `proposal 001` in the message.
+W0.2 records the first baseline without an API key. `node evals/run.mjs --offline-grade --write-baseline --yes` dry-grades the committed seed fixtures (`method: offline-grade`, `mode: harness-ide`, `runner: ide`). Live pass, calls, and rubric stay null until `/eval` grades a real IDE run and the user approves a refresh. After `recorded` is set, delete `.harness/BOOTSTRAP` so gates 2 and 3 enforce. See proposal 002. The checkpoint commit names proposal 002.
 
 ## Regression rule
 Not applicable to the initial bootstrap; regressions are measured against the baseline W0.2 records.

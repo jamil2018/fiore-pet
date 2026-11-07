@@ -1,7 +1,7 @@
 name: check
 
 # Second gate after the local judge. Runs scripts/check.ps1 -Tier full.
-# Evals are NOT run here: they need CURSOR_API_KEY and cost usage.
+# Evals are not run here: the IDE subscription executes them and evals/run.mjs grades them. No API key.
 # No secrets are used by this workflow.
 
 on:

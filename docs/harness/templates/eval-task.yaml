@@ -1,4 +1,4 @@
-# Purpose: eval task shape. Copy to evals/tasks/<id>.yaml. The runner (evals/run.mjs) checks out base_commit in a fresh worktree, sends `prompt` through /ship, copies hidden_tests in afterwards, then grades.
+# Purpose: eval task shape. Copy to evals/tasks/<id>.yaml. `/eval` checks out base_commit in a fresh worktree and sends `prompt` through /ship in the IDE. evals/run.mjs copies hidden_tests in afterwards and grades. No API key.
 # last-verified: 2026-11-07
 
 id: <slug>                  # lowercase kebab; matches the file name

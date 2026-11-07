@@ -11,8 +11,8 @@ Applies `.harness/proposals/<id>-<slug>.md` (`id` = `NNN`). Contract: `docs/harn
 ## 1. Preconditions (stop if any fails)
 - The user explicitly invoked this command for this id in this chat. A proposal merely existing, or `/retro` having written it, is **not** approval.
 - Proposal front matter `status: proposed` (not already `applied` or `rejected`).
-- `CURSOR_API_KEY` is set in the environment (needed by the eval).
 - `git status --short` shows no uncommitted changes to the files the diff touches (so revert is exact).
+- Evals do not use an API key. `/eval` runs on the IDE subscription and `evals/run.mjs` only grades.
 
 ## 2. Apply
 1. Read the proposal; list the files in its diff. Only harness files are allowed (`.cursor/agents|rules|skills|hooks*`, `docs/harness/*` except `lessons.md`). Anything else: stop and report.
@@ -21,7 +21,7 @@ Applies `.harness/proposals/<id>-<slug>.md` (`id` = `NNN`). Contract: `docs/harn
 4. Set front matter `status: approved`, and record `applied-files:` listing the touched paths. The stop hook's unapproved-harness-edit gate recognises an approved proposal id; include `proposal NNN` in any commit message that carries this change.
 
 ## 3. Evaluate
-Run `/eval` (all tasks, not only the "watch" tasks). Use the proposal's "eval tasks to watch" to focus the summary.
+Run `/eval` (all tasks, not only the "watch" tasks): IDE `/ship` in each prepared worktree, then `node evals/run.mjs --grade`. Use the proposal's "eval tasks to watch" to focus the summary. No API key.
 
 ## 4. Decide
 - **No regression** (no pass->fail, calls within +30%, rubric not lower): keep. Set `status: applied`, add the eval result file name and a one-line metric delta. Offer to update `evals/baseline.json` with the new results; update only if the user confirms. Commit only on request: `chore(harness): apply proposal NNN <slug>`.

@@ -5,7 +5,7 @@
 #   4. local harness dirs          (.harness/*, evals/results, logs are gitignored and absent in fresh worktrees)
 # Cargo settings are persisted in <worktree>\.cargo\config.toml (hidden via .git/info/exclude) because
 # environment variables set here do not reach later agent shells.
-# Secrets are never copied: CURSOR_API_KEY is read from the environment only; .env files are not propagated.
+# Secrets are never copied. Evals do not read an API key. .env files are not propagated.
 # Options: -Force (also configure cargo in the main checkout), -SkipInstall (skip npm).
 # Env:     FIORE_TARGET_ROOT = base dir for per-worktree target dirs (default: <worktree>\target).
 [CmdletBinding()]
