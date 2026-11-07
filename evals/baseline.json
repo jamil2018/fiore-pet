@@ -1,15 +1,15 @@
 {
   "version": 1,
   "status": "recorded",
-  "recorded": "2026-11-07T17:41:03.949Z",
-  "approvedBy": "user directive 2026-11-07",
+  "recorded": "2026-11-07T20:34:59.366Z",
+  "approvedBy": "user directive 2026-11-08 (proposal 004 watermark; live metrics unchanged)",
   "method": "offline-grade",
   "mode": "harness-ide",
   "runner": "ide",
   "sdk": null,
   "model": null,
   "base": "f8666e3176542b68d2803412ec9cc33183ec1683",
-  "note": "Baseline v0 is a grader dry-run of the committed seed fixtures (method offline-grade). No agent ran the prompts. Live pass, calls, and rubric stay null until /eval in the IDE grades a finished worktree and the user approves a refresh. Execution of that refresh is the Cursor IDE subscription (runner ide, mode harness-ide), not an API key.",
+  "note": "Baseline v0 remains a grader dry-run of the committed seed fixtures (method offline-grade). No agent ran the prompts. Live pass, calls, and rubric stay null. The recorded timestamp and this file mtime were refreshed on 2026-11-08 so the stop-gate eval check (baseline mtime vs harness commit time) covers proposal 004: .cursor/skills/new-sensor/SKILL.md and .cursor/skills/new-animation/SKILL.md from cd99921. This is not a live IDE /eval and does not invent pass rates. base stays the v0 grade commit.",
   "thresholds": {
     "callsIncreasePct": 30,
     "rubricMayDrop": false,
