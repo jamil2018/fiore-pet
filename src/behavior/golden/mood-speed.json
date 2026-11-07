@@ -1,0 +1,36 @@
+{
+  "name": "ac_ms_3_mood_changes_face_and_speed_only",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "coding",
+      "mood": "energetic",
+      "season": "spring",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "tick": true,
+      "expect": { "body": "code", "face": "energetic", "speed": 1.2, "outfit": "spring" }
+    },
+    {
+      "at": 1000,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "content" } },
+      "expect": { "body": "code", "face": "content", "speed": 1 }
+    },
+    {
+      "at": 2000,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "calm" } },
+      "expect": { "body": "code", "face": "calm", "speed": 0.85 }
+    },
+    {
+      "at": 3000,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "sleepy" } },
+      "expect": { "body": "code", "face": "sleepy", "speed": 0.7 }
+    }
+  ]
+}

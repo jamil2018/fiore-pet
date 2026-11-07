@@ -1,0 +1,81 @@
+{
+  "name": "ac_ms_5_stretch_once_per_day_and_yawn_while_sleepy",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "coding",
+      "mood": "content",
+      "season": "autumn",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "energetic" } },
+      "expect": { "body": "stretch", "face": "energetic", "speed": 1.2 }
+    },
+    {
+      "at": 1000,
+      "tick": true,
+      "expect": { "body": "code", "face": "energetic" }
+    },
+    {
+      "at": 1500,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "energetic" } },
+      "expect": { "body": "code", "face": "energetic" }
+    },
+    {
+      "at": 2000,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "sleepy" } },
+      "expect": { "body": "code", "face": "sleepy", "speed": 0.7 }
+    },
+    {
+      "at": 121999,
+      "tick": true,
+      "expect": { "body": "code", "face": "sleepy" }
+    },
+    {
+      "at": 195540,
+      "tick": true,
+      "expect": { "body": "code", "face": "sleepy" }
+    },
+    {
+      "at": 195541,
+      "tick": true,
+      "expect": { "body": "yawn", "face": "sleepy" }
+    },
+    {
+      "at": 196541,
+      "tick": true,
+      "expect": { "body": "code", "face": "sleepy" }
+    },
+    {
+      "at": 196541,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "content" } },
+      "expect": { "body": "code", "face": "content", "speed": 1 }
+    },
+    {
+      "at": 402030,
+      "tick": true,
+      "expect": { "body": "code", "face": "content" }
+    },
+    {
+      "at": 86400000,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "energetic" } },
+      "expect": { "body": "stretch", "face": "energetic", "speed": 1.2 }
+    },
+    {
+      "at": 86401000,
+      "tick": true,
+      "expect": { "body": "code", "face": "energetic" }
+    },
+    {
+      "at": 86401000,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "energetic" } },
+      "expect": { "body": "code", "face": "energetic" }
+    }
+  ]
+}

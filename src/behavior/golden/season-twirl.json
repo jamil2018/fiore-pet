@@ -1,0 +1,83 @@
+{
+  "name": "ac_ms_4_twirl_on_first_change_and_summer_glasses",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "other",
+      "mood": "content",
+      "season": "autumn",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "tick": true,
+      "expect": { "body": "idle", "outfit": "autumn", "face": "content" }
+    },
+    {
+      "at": 100,
+      "event": { "type": "season.changed", "payload": { "season": "winter" } },
+      "expect": { "body": "twirl", "outfit": "winter" }
+    },
+    {
+      "at": 1100,
+      "tick": true,
+      "expect": { "body": "idle", "outfit": "winter" }
+    },
+    {
+      "at": 1200,
+      "event": { "type": "season.changed", "payload": { "season": "spring" } },
+      "expect": { "body": "idle", "outfit": "spring" }
+    },
+    {
+      "at": 1300,
+      "event": { "type": "season.changed", "payload": { "season": "summer" } },
+      "expect": { "body": "idle", "outfit": "summer" }
+    },
+    {
+      "at": 1400,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "coding", "process": "Code.exe", "title": "main.rs" }
+      },
+      "expect": { "body": "code", "outfit": "summer_glasses", "accessory": "laptop" }
+    },
+    {
+      "at": 1500,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "writing", "process": "WINWORD.EXE", "title": "notes" }
+      },
+      "expect": { "body": "write", "outfit": "summer", "accessory": "notepad" }
+    },
+    {
+      "at": 1600,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "browsing", "process": "chrome.exe", "title": "docs" }
+      },
+      "expect": { "body": "browse", "outfit": "summer", "accessory": "tablet" }
+    },
+    {
+      "at": 1700,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "other", "process": "explorer.exe", "title": "desktop" }
+      },
+      "expect": { "body": "idle", "outfit": "summer", "accessory": null, "move": "wander" }
+    },
+    {
+      "at": 1800,
+      "event": { "type": "season.changed", "payload": { "season": "summer" } },
+      "expect": { "body": "idle", "outfit": "summer" }
+    },
+    {
+      "at": 1900,
+      "event": { "type": "season.changed", "payload": { "season": "autumn" } },
+      "expect": { "body": "idle", "outfit": "autumn" }
+    }
+  ]
+}
