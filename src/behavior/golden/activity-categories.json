@@ -1,0 +1,61 @@
+{
+  "name": "ac_ac_5_activity_categories",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "other",
+      "mood": "content",
+      "season": "autumn",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "coding", "process": "Code.exe", "title": "main" }
+      },
+      "expect": { "body": "code", "accessory": "laptop", "move": "stay" }
+    },
+    {
+      "at": 100,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "writing", "process": "notepad.exe", "title": "doc" }
+      },
+      "expect": { "body": "write", "accessory": "notepad", "move": "stay" }
+    },
+    {
+      "at": 200,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "browsing", "process": "chrome.exe", "title": "News" }
+      },
+      "expect": { "body": "browse", "accessory": "tablet", "move": "stay" }
+    },
+    {
+      "at": 300,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "other", "process": "explorer.exe", "title": "desktop" }
+      },
+      "expect": { "body": "idle", "accessory": null, "move": "wander" }
+    },
+    {
+      "at": 400,
+      "event": {
+        "type": "music.started",
+        "payload": { "title": "t", "artist": "a", "sourceApp": "Spotify.exe" }
+      },
+      "expect": { "body": "notice", "accessory": "headphones" }
+    },
+    {
+      "at": 1400,
+      "tick": true,
+      "expect": { "body": "dance", "accessory": "headphones", "move": "stay" }
+    }
+  ]
+}

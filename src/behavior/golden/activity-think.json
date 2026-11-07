@@ -1,0 +1,36 @@
+{
+  "name": "ac_ac_think_while_coding",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "coding",
+      "mood": "content",
+      "season": "autumn",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 38671,
+      "tick": true,
+      "expect": { "body": "code", "accessory": "laptop" }
+    },
+    {
+      "at": 38672,
+      "tick": true,
+      "expect": { "body": "think", "accessory": "laptop", "move": "stay" }
+    },
+    {
+      "at": 40671,
+      "tick": true,
+      "expect": { "body": "think", "accessory": "laptop" }
+    },
+    {
+      "at": 40672,
+      "tick": true,
+      "expect": { "body": "code", "accessory": "laptop" }
+    }
+  ]
+}

@@ -7,6 +7,64 @@
   },
   "sheets": [
     {
+      "layer": "body",
+      "image": "activity.png",
+      "animations": {
+        "code": {
+          "row": 0,
+          "start": 0,
+          "count": 4,
+          "fps": 6,
+          "loop": true,
+          "headOffset": [
+            [0, 0],
+            [0, -1],
+            [0, 0],
+            [0, 1]
+          ]
+        },
+        "think": {
+          "row": 1,
+          "start": 0,
+          "count": 4,
+          "fps": 4,
+          "loop": true,
+          "headOffset": [
+            [0, 0],
+            [0, -1],
+            [0, 0],
+            [0, 1]
+          ]
+        },
+        "write": {
+          "row": 2,
+          "start": 0,
+          "count": 4,
+          "fps": 6,
+          "loop": true,
+          "headOffset": [
+            [0, 0],
+            [0, -1],
+            [0, 0],
+            [0, 1]
+          ]
+        },
+        "browse": {
+          "row": 3,
+          "start": 0,
+          "count": 4,
+          "fps": 4,
+          "loop": true,
+          "headOffset": [
+            [0, 0],
+            [0, -1],
+            [0, 0],
+            [0, 1]
+          ]
+        }
+      }
+    },
+    {
       "layer": "accessory",
       "image": "base.png",
       "variant": "laptop",
