@@ -1,7 +1,7 @@
 # Eval tasks
 
 Purpose: format of `evals/tasks/<id>.yaml` as consumed by `evals/run.mjs`. Execution is `/eval` in the IDE. CLI: `docs/harness/README.md` section 5.
-last-verified: 2026-11-07
+last-verified: 2026-11-08
 
 Grade: `node evals/run.mjs --grade --manifest <prepare.json>` or `--grade --worktree <path>`. `--dry-run` validates YAML. Nothing in this runner reads an API key.
 
@@ -35,7 +35,16 @@ The YAML reader is a small subset parser: nested maps, lists of scalars or maps,
 | `config-lint-rules` | S | Small config change across 3 files gets a judge verdict. |
 | `debug-mood-night` | S, debugger | Crash far from a range-check bug; root cause fixed, not the symptom. |
 
-`--offline-grade` runs steps 3-5 against those seed fixtures with no agent. Live pass, calls, and rubric stay null. That recording is baseline v0 (`method: offline-grade`).
+## Foundation tasks
+Pinned to `p1-foundation`. Each one is a sandbox under `evals/seed/<id>/` plus a hidden grader. They measure the Phase 1 skills without editing the product catalog or the sprite sheets. Execution is still `/eval` in the IDE. No `@cursor/sdk` and no API key.
+
+| Id | Lane | What it checks |
+|---|---|---|
+| `add-event-end-to-end` | M | One new event lands in the catalog row, both mirrors, and the sensor sample. |
+| `add-animation` | S | One one-shot atlas entry, an engine mapping, and a golden stub. |
+| `fix-broken-debounce` | S, debugger | Hold-window crash; the root cause is the debounce anchor, not the throw site. |
+
+`--offline-grade` runs steps 3-5 against those seed fixtures with no agent. Live pass, calls, and rubric stay null. That recording is baseline v0 (`method: offline-grade`). The three foundation tasks are not in v0 until an approved refresh.
 
 ## Regression rule
 A live pass became a fail, calls rose by more than 30%, or the rubric score dropped. Null live metrics are not a regression. Update `evals/baseline.json` only after the user approves (`--write-baseline --yes` on a `--grade` or `--offline-grade` run).

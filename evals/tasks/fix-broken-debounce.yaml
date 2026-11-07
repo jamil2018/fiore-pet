@@ -1,0 +1,53 @@
+# Purpose: foundation eval. Seeded debounce bug; the crash is far from the hold-window root cause.
+# last-verified: 2026-11-08
+# IDE-native: /eval runs /ship in a worktree. evals/run.mjs only grades. No API key.
+
+id: fix-broken-debounce
+description: Fix a hold-window crash caused by the wrong debounce anchor (debugger, root cause)
+
+base_commit: p1-foundation
+
+prompt: |
+  Bug report: running `node sandbox/debounce.mjs 100` crashes with
+  "TypeError: Cannot read properties of undefined (reading 'toUpperCase')".
+  `node sandbox/debounce.mjs 1500` prints "CODING". The intended behaviour is in
+  the comment at the top of sandbox/debounce.mjs. Find and fix the root cause,
+  and add a regression test to sandbox/debounce.test.mjs. Do not delete or weaken
+  existing tests. Stay inside sandbox/. Do not edit src/ or src-tauri/.
+
+expected_lane: S
+expected_judge: full
+expected_roles:
+  - debugger
+
+allowed_paths:
+  - sandbox/**
+
+protected_paths:
+  - sandbox/debounce.test.mjs
+
+seed_files:
+  - src: evals/seed/fix-broken-debounce/sandbox/debounce.mjs
+    dest: sandbox/debounce.mjs
+  - src: evals/seed/fix-broken-debounce/sandbox/debounce.test.mjs
+    dest: sandbox/debounce.test.mjs
+
+hidden_tests:
+  - src: evals/hidden/fix-broken-debounce/debounce.hidden.test.mjs
+    dest: eval-hidden/debounce.hidden.test.mjs
+
+hidden_commands:
+  - node --test eval-hidden/debounce.hidden.test.mjs
+  - node --test sandbox/debounce.test.mjs
+
+budget:
+  max_calls: 5
+  max_retries: 3
+  max_wall_seconds: 900
+
+graders:
+  check_full: true
+  hidden_tests: true
+  rubric_min: 11
+  lane_correct: true
+  within_budget: true

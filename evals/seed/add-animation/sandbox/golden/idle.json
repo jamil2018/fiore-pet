@@ -1,0 +1,15 @@
+{
+  "name": "idle-holds",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": { "activity": "other" }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "event": { "type": "state.snapshot", "payload": {} },
+      "expect": { "body": "idle" }
+    }
+  ]
+}

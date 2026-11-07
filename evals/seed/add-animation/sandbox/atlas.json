@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "group": "base",
+  "frame": { "w": 32, "h": 32 },
+  "sheets": [
+    {
+      "layer": "body",
+      "image": "base.png",
+      "animations": {
+        "idle": { "row": 0, "start": 0, "count": 4, "fps": 4, "loop": true }
+      }
+    }
+  ]
+}

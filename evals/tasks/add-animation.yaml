@@ -1,0 +1,54 @@
+# Purpose: foundation eval. Add one atlas animation, map it in the sandbox engine, and add a golden stub.
+# last-verified: 2026-11-08
+# IDE-native: /eval runs /ship in a worktree. evals/run.mjs only grades. No API key.
+
+id: add-animation
+description: Add a one-shot wave animation, engine mapping, and golden stub (S)
+
+base_commit: p1-foundation
+
+prompt: |
+  Add a one-shot animation named `wave` in the sandbox atlas and engine. Stay inside sandbox/.
+  Do not edit src/, src-tauri/, docs/, or public/. There is no PNG in this sandbox; keep the 32 grid in JSON.
+
+  1. sandbox/atlas.json: on the existing body sheet, add
+     "wave": { "row": 1, "start": 0, "count": 4, "fps": 8, "loop": false }
+     Do not change the idle entry. Do not add another group or sheet.
+  2. sandbox/engine.mjs: keep the exported resolve(eventType). When eventType is "pet.wave",
+     return { body: "wave" }. Every other event type still returns { body: "idle" }.
+  3. Add sandbox/golden/wave.json, copying the shape of sandbox/golden/idle.json.
+     Name the case "wave-once". One step at at=0 sends event type "pet.wave" with payload {}
+     and expects { "body": "wave" }.
+
+expected_lane: S
+expected_judge: full
+
+allowed_paths:
+  - sandbox/**
+
+seed_files:
+  - src: evals/seed/add-animation/sandbox/atlas.json
+    dest: sandbox/atlas.json
+  - src: evals/seed/add-animation/sandbox/engine.mjs
+    dest: sandbox/engine.mjs
+  - src: evals/seed/add-animation/sandbox/golden/idle.json
+    dest: sandbox/golden/idle.json
+
+hidden_tests:
+  - src: evals/hidden/add-animation/animation.hidden.test.mjs
+    dest: eval-hidden/animation.hidden.test.mjs
+
+hidden_commands:
+  - node --test eval-hidden/animation.hidden.test.mjs
+
+budget:
+  max_calls: 5
+  max_retries: 2
+  max_wall_seconds: 900
+
+graders:
+  check_full: true
+  hidden_tests: true
+  rubric_min: 11
+  lane_correct: true
+  within_budget: true

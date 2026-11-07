@@ -1,0 +1,62 @@
+# Purpose: foundation eval. Add one event across the sandbox catalog, both mirrors, and the sensor.
+# last-verified: 2026-11-08
+# IDE-native: /eval runs /ship in a worktree. evals/run.mjs only grades. No API key.
+
+id: add-event-end-to-end
+description: Add desk.lamp through the sandbox catalog, Rust mirror, TS mirror, and sensor (M)
+
+base_commit: p1-foundation
+
+prompt: |
+  Add the event `desk.lamp` end to end in the sandbox pipeline. Stay inside sandbox/.
+  Do not edit src/, src-tauri/, docs/, or public/.
+
+  Payload field is `on` (boolean). Match the object shape already used in the mirror files:
+  `{ name: "desk.lamp", fields: { on: "boolean" } }`.
+
+  Update all of:
+    - sandbox/catalog.md: one table row, directly after `music.stopped`, same style
+    - sandbox/events_rs.mjs: append that entry to the exported RUST_EVENTS array
+    - sandbox/events_ts.mjs: append the same entry to the exported TS_EVENTS array
+    - sandbox/sensor.mjs: sample() returns { type: "desk.lamp", payload: { on: true } }
+    - sandbox/events.test.mjs: add a test that both mirrors list desk.lamp with the same fields
+
+  Do not rename or remove state.snapshot or music.stopped. The two mirrors must keep agreeing.
+
+expected_lane: M
+expected_judge: full
+
+allowed_paths:
+  - sandbox/**
+
+seed_files:
+  - src: evals/seed/add-event-end-to-end/sandbox/catalog.md
+    dest: sandbox/catalog.md
+  - src: evals/seed/add-event-end-to-end/sandbox/events_rs.mjs
+    dest: sandbox/events_rs.mjs
+  - src: evals/seed/add-event-end-to-end/sandbox/events_ts.mjs
+    dest: sandbox/events_ts.mjs
+  - src: evals/seed/add-event-end-to-end/sandbox/sensor.mjs
+    dest: sandbox/sensor.mjs
+  - src: evals/seed/add-event-end-to-end/sandbox/events.test.mjs
+    dest: sandbox/events.test.mjs
+
+hidden_tests:
+  - src: evals/hidden/add-event-end-to-end/event.hidden.test.mjs
+    dest: eval-hidden/event.hidden.test.mjs
+
+hidden_commands:
+  - node --test eval-hidden/event.hidden.test.mjs
+  - node --test sandbox/events.test.mjs
+
+budget:
+  max_calls: 10
+  max_retries: 2
+  max_wall_seconds: 1200
+
+graders:
+  check_full: true
+  hidden_tests: true
+  rubric_min: 11
+  lane_correct: true
+  within_budget: true
