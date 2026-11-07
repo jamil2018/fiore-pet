@@ -1,5 +1,6 @@
 import { defineReaction } from '../types';
 
+// Stretch, yawn, face, and speed stay in the engine. Effects here would suppress them.
 export const moodReaction = defineReaction<Record<string, never>>({
   id: 'mood',
   init() {
