@@ -31,6 +31,8 @@ pub trait EventSink {
 #[derive(Debug)]
 pub enum HubMsg {
     Event(FioreEvent),
+    /// Debug/injected event: folded into state but always forwarded as sent.
+    Inject(FioreEvent),
     FrontendReady,
 }
 
@@ -40,9 +42,9 @@ pub struct HubHandle {
 }
 
 impl HubHandle {
-    pub fn send_event(&self, event: FioreEvent) -> Result<(), HubError> {
+    pub fn send_inject(&self, event: FioreEvent) -> Result<(), HubError> {
         self.tx
-            .send(HubMsg::Event(event))
+            .send(HubMsg::Inject(event))
             .map_err(|_| HubError::Closed)
     }
 
@@ -107,6 +109,14 @@ impl Hub {
 
     pub fn on_frontend_ready(&self) -> Vec<FioreEvent> {
         vec![self.snapshot_event()]
+    }
+
+    /// Injected (debug) path. Folds the value like a sensor report (field and
+    /// seen flag) so later sensor events dedupe correctly, but always forwards
+    /// the original event: no baseline swap, no duplicate drop.
+    pub fn inject(&mut self, event: FioreEvent) -> Vec<FioreEvent> {
+        let _folded = self.handle(event.clone());
+        vec![event]
     }
 
     /// Sensor path. The first report of each state field becomes `state.snapshot`.
@@ -283,6 +293,7 @@ fn run_hub<S: EventSink>(rx: Receiver<HubMsg>, sink: S) {
     while let Ok(msg) = rx.recv() {
         let outgoing = match msg {
             HubMsg::Event(event) => hub.handle(event),
+            HubMsg::Inject(event) => hub.inject(event),
             HubMsg::FrontendReady => hub.on_frontend_ready(),
         };
         deliver(&sink, outgoing);
@@ -407,6 +418,39 @@ mod tests {
 
         let level = FioreEvent::MusicLevel { peak: 0.25 };
         assert_eq!(hub.handle(level.clone()), vec![level]);
+    }
+
+    #[test]
+    fn injected_state_event_passes_through_before_baseline() {
+        let mut hub = Hub::new();
+        let fullscreen = FioreEvent::FullscreenEntered {};
+        assert_eq!(hub.inject(fullscreen.clone()), vec![fullscreen.clone()]);
+        // A repeat is not dropped.
+        assert_eq!(hub.inject(fullscreen.clone()), vec![fullscreen]);
+
+        let mood = FioreEvent::TimeMoodChanged { mood: Mood::Sleepy };
+        assert_eq!(hub.inject(mood.clone()), vec![mood]);
+
+        let season = FioreEvent::SeasonChanged {
+            season: Season::Winter,
+        };
+        assert_eq!(hub.inject(season.clone()), vec![season]);
+
+        // Folded: the snapshot reflects injected values, and a sensor report of
+        // the same value is now a duplicate (baseline already seen).
+        match hub.on_frontend_ready().first() {
+            Some(FioreEvent::StateSnapshot(snapshot)) => {
+                assert!(snapshot.fullscreen);
+                assert_eq!(snapshot.mood, Mood::Sleepy);
+                assert_eq!(snapshot.season, Season::Winter);
+            }
+            other => panic!("expected snapshot, got {other:?}"),
+        }
+        assert!(hub.handle(FioreEvent::FullscreenEntered {}).is_empty());
+
+        // Music level injected while stopped still passes through.
+        let level = FioreEvent::MusicLevel { peak: 0.5 };
+        assert_eq!(hub.inject(level.clone()), vec![level]);
     }
 
     #[test]

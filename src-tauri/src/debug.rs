@@ -19,7 +19,7 @@ impl Serialize for DebugError {
 }
 
 pub fn inject(hub: &HubHandle, event: FioreEvent) {
-    if let Err(err) = hub.send_event(event) {
+    if let Err(err) = hub.send_inject(event) {
         tracing::debug!(error = %err, "dropped debug event");
     }
 }
@@ -27,7 +27,7 @@ pub fn inject(hub: &HubHandle, event: FioreEvent) {
 #[cfg(debug_assertions)]
 #[tauri::command]
 pub fn emit_debug_event(event: FioreEvent, hub: State<'_, HubHandle>) -> Result<(), DebugError> {
-    hub.send_event(event).map_err(|_| DebugError::Closed)
+    hub.send_inject(event).map_err(|_| DebugError::Closed)
 }
 
 #[cfg(debug_assertions)]
@@ -52,7 +52,7 @@ pub fn parse_debug_line(line: &str) -> Result<FioreEvent, DebugError> {
 pub fn spawn_listener(hub: HubHandle) {
     let port = dev_port();
     let addr = debug_bind_addr(port);
-    let _ = std::thread::Builder::new()
+    let spawned = std::thread::Builder::new()
         .name("fiore-debug".to_string())
         .spawn(move || {
             let listener = match std::net::TcpListener::bind(addr) {
@@ -69,6 +69,9 @@ pub fn spawn_listener(hub: HubHandle) {
                 }
             }
         });
+    if let Err(err) = spawned {
+        tracing::warn!(error = %err, "debug listener thread failed to spawn");
+    }
 }
 
 #[cfg(debug_assertions)]
