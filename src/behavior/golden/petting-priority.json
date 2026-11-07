@@ -1,0 +1,59 @@
+{
+  "name": "ac_pt_3_petting_outranks_activity",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "other",
+      "mood": "content",
+      "season": "autumn",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "coding", "process": "Code.exe", "title": "x" }
+      },
+      "expect": { "body": "code", "accessory": "laptop", "face": "content", "move": "stay" }
+    },
+    {
+      "at": 100,
+      "event": { "type": "pet.hover_start", "payload": {} },
+      "expect": { "body": "idle", "face": "content", "move": "stay", "accessory": "laptop" }
+    },
+    {
+      "at": 200,
+      "event": { "type": "pet.stroke", "payload": { "direction": "left" } },
+      "expect": { "body": "lean", "face": "content" }
+    },
+    {
+      "at": 300,
+      "event": { "type": "pet.petted", "payload": {} },
+      "expect": { "body": "happy", "face": "happy" }
+    },
+    {
+      "at": 1300,
+      "tick": true,
+      "expect": { "body": "happy", "face": "happy" }
+    },
+    {
+      "at": 2300,
+      "tick": true,
+      "expect": { "body": "idle", "face": "content" }
+    },
+    {
+      "at": 2400,
+      "event": { "type": "pet.hover_end", "payload": { "wasPetted": true } },
+      "expect": { "body": "wag", "face": "content" }
+    },
+    {
+      "at": 3200,
+      "tick": true,
+      "expect": { "body": "code", "face": "content", "accessory": "laptop" }
+    }
+  ]
+}

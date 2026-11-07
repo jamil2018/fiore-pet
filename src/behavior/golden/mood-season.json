@@ -1,0 +1,69 @@
+{
+  "name": "ac_ms_mood_face_and_season_outfit",
+  "start": {
+    "now": 0,
+    "seed": 1,
+    "snapshot": {
+      "activity": "coding",
+      "mood": "content",
+      "season": "autumn",
+      "fullscreen": false,
+      "music": { "playing": false }
+    }
+  },
+  "steps": [
+    {
+      "at": 0,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "calm" } },
+      "expect": { "body": "code", "face": "calm", "speed": 0.85, "outfit": "autumn" }
+    },
+    {
+      "at": 500,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "sleepy" } },
+      "expect": { "body": "code", "face": "sleepy", "speed": 0.7 }
+    },
+    {
+      "at": 1000,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "energetic" } },
+      "expect": { "body": "stretch", "face": "energetic", "speed": 1.2 }
+    },
+    {
+      "at": 2000,
+      "tick": true,
+      "expect": { "body": "code", "face": "energetic", "speed": 1.2 }
+    },
+    {
+      "at": 2500,
+      "event": { "type": "time.mood_changed", "payload": { "mood": "energetic" } },
+      "expect": { "body": "code", "face": "energetic" }
+    },
+    {
+      "at": 3000,
+      "event": { "type": "season.changed", "payload": { "season": "winter" } },
+      "expect": { "body": "twirl", "outfit": "winter", "face": "energetic" }
+    },
+    {
+      "at": 4000,
+      "tick": true,
+      "expect": { "body": "code", "outfit": "winter" }
+    },
+    {
+      "at": 4500,
+      "event": { "type": "season.changed", "payload": { "season": "spring" } },
+      "expect": { "body": "code", "outfit": "spring" }
+    },
+    {
+      "at": 5000,
+      "event": { "type": "season.changed", "payload": { "season": "summer" } },
+      "expect": { "body": "code", "outfit": "summer_glasses" }
+    },
+    {
+      "at": 5500,
+      "event": {
+        "type": "app.category_changed",
+        "payload": { "category": "other", "process": "explorer.exe", "title": "desktop" }
+      },
+      "expect": { "body": "idle", "outfit": "summer", "accessory": null, "move": "wander" }
+    }
+  ]
+}
