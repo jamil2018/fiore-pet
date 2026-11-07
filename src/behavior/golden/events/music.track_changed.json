@@ -1,0 +1,4 @@
+{
+  "type": "music.track_changed",
+  "payload": { "title": "Other", "artist": "Artist" }
+}

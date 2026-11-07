@@ -1,9 +1,9 @@
 # Sprite atlas reference (Fiore)
 
 Purpose: the per-group atlas JSON schema, layer alignment rules, rendering rules and the recipe for adding an animation.
-last-verified: 2026-11-07
+last-verified: 2026-11-08
 
-Status: **proposed contract.** The schema below is the design the W1.0 contract step freezes (split atlas schema + loader, `src/render/`). After W1.0, the TypeScript types in `src/render/` are the source of truth and this page must match them. Browser rendering facts are verified against MDN (see Sources); everything else is a Fiore design rule.
+Status: **frozen contract.** `src/render/atlas.ts` is the source of truth; this page matches it. Browser rendering facts are verified against MDN (see Sources); everything else is a Fiore design rule.
 
 ## 1. Files and groups
 
@@ -34,7 +34,7 @@ One JSON per group. A group may contain sheets for more than one layer, so layer
   "frame": { "w": 32, "h": 32 },         // grid cell; must be 32x32 in v1
   "sheets": [
     {
-      "layer": "body",                   // body | outfit | face | accessory
+      "layer": "body",                   // body | outfit | face | accessory; variant forbidden on body
       "image": "base.png",               // relative to the JSON's directory
       "animations": {
         "idle": {
@@ -60,7 +60,7 @@ interface AnimationDef {
   row: number; start: number; count: number; fps: number; loop: boolean;
   headOffset?: ReadonlyArray<readonly [number, number]>;
 }
-interface SheetDef { layer: LayerName; image: string; animations: Record<string, AnimationDef>; }
+interface SheetDef { layer: LayerName; image: string; variant?: string; animations: Record<string, AnimationDef>; }
 interface AtlasFile { version: 1; group: string; frame: { w: 32; h: 32 }; sheets: SheetDef[]; }
 ```
 
@@ -70,12 +70,13 @@ Field rules:
 - Animation names are lowercase single words from the registry in the spec/`FioreEvent`-adjacent animation list. Unknown names are a load error, not a warning.
 - A **one-shot** (`loop: false`) must be a complete sequence that ends on a frame matching the idle pose, so the engine can cut back without a pop.
 - Speed scaling (mood) multiplies `fps` at runtime; never bake mood speed into the JSON.
-- `headOffset` length, when present, must equal `count`. Values are integer source pixels (never fractional).
+- `headOffset` length, when present, must equal `count`. Values are integer source pixels (never fractional). `headOffset` is body-only.
+- `variant` is required for `face`, `outfit`, and `accessory`, and forbidden for `body`. Allowed names are the face, outfit, and accessory constants in `src/behavior/types.ts`.
 
 ### Merge rules (loader)
 
-1. Key is `(layer, animation)`. The same key defined in two groups is a **load error** (names a group collision instead of silently overriding).
-2. A `body` animation referenced by the engine but absent from every group fails startup with the missing name in the message (clear error beats an invisible pet).
+1. Key is `(layer, variant, animation)`. Body sheets use an empty variant. The same key defined in two groups is a **load error** (names a group collision instead of silently overriding).
+2. `MergedAtlas.body(anim)` uses that body animation, otherwise body `idle`, and logs the fallback once. A missing group file is logged and skipped. Overlay `lookup` uses the named animation, otherwise the sheet's `"*"` entry.
 3. Loader validates, at load: `version === 1`, `group` matches file, PNG `naturalWidth >= (start + count) * 32` and `naturalHeight >= (row + 1) * 32`, `count >= 1`, `fps > 0`. These checks are also what the `new-animation` skill and `check` should run against the files on disk.
 
 ## 3. Drawing and scaling rules (verified)

@@ -1,0 +1,4 @@
+{
+  "type": "app.category_changed",
+  "payload": { "category": "coding", "process": "Code.exe", "title": "main.rs" }
+}

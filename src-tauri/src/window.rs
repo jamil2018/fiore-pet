@@ -1,5 +1,7 @@
 #[derive(Debug, thiserror::Error)]
 pub enum WindowError {
+    // Constructed when window setup can fail. The W1.0 stub always returns Ok.
+    #[allow(dead_code)]
     #[error("window setup failed: {0}")]
     Setup(String),
 }

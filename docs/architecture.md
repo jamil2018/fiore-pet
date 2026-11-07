@@ -1,7 +1,7 @@
 # Architecture
 
 Purpose: components, data flow, threading, window model and error policy. Scope and events live in `docs/fiore-mvp-spec.md`; module paths in `docs/codemap.md`.
-last-verified: 2026-11-07
+last-verified: 2026-11-08
 
 ## Components
 
@@ -43,7 +43,11 @@ flowchart LR
 `FioreEvent` is a serde enum, `#[serde(tag = "type", content = "payload", rename_all_fields = "camelCase")]` with `dot.case` type names (`#[serde(rename = "music.started")]`). TypeScript mirror in `src/events.ts` is a discriminated union on `type`. Example: `{"type":"music.level","payload":{"peak":0.42}}`. The full catalog is in the spec.
 
 ### Contracts (frozen in W1.0)
-`FioreEvent` + TS mirror; `Sensor` trait (`fn start(&self, tx: Sender<FioreEvent>)`, `fn name(&self) -> &'static str`); hub registration (all 5 sensors as stubs); reaction registry (`reactions/index.ts`, one stub per feature); atlas schema + loader; engine input/output types (`src/behavior/types.ts`); debug-command interface (`emit_debug_event`). After W1.0, parallel tasks fill owned files only.
+`FioreEvent` + TS mirror; `Sensor` trait (`fn name(&self) -> &'static str`, `fn start(&self, tx: Sender<FioreEvent>) -> Result<(), SensorError>`); hub registration (all 5 sensors as stubs); reaction registry (`reactions/index.ts`, one stub per feature); atlas schema + loader (`src/render/atlas.ts`); engine input/output types (`src/behavior/types.ts`); debug command `emit_debug_event`. After W1.0, parallel tasks fill owned files only.
+
+`start` runs on the hub-spawned sensor thread and may block. `Err` or a panic (caught with `catch_unwind`) disables that sensor only. The first report of each state field (activity, mood, season, fullscreen, music) is a baseline: the hub folds it and emits `state.snapshot` instead of the change event. Later state events are forwarded only when the value changes. `music.level` is forwarded only while music is playing. `pet.*` events pass through. The hub emits `state.snapshot` after the sensors are spawned, and again when the frontend invokes `frontend_ready` (the listen-before-setup race in `docs/reference/tauri-v2.md`). A sink failure is logged at `debug` and the event is dropped. Pre-sensor defaults are activity `other`, mood `content`, season `autumn`, fullscreen off, music stopped.
+
+Debug injection (debug builds only) is `emit_debug_event` plus a TCP listener on `127.0.0.1` port `FIORE_DEV_PORT` (default 17321), one JSON `FioreEvent` per line. The hub still emits on the single channel `fiore://event`.
 
 ### Engine
 Pure function, no I/O. Reactions are per-feature reducers registered in `reactions/index.ts`; the engine composes them by the priority stack in the spec (section 2). Time and randomness are inputs, so golden replay is deterministic.

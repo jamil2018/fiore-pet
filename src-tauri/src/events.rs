@@ -101,6 +101,9 @@ pub enum FioreEvent {
 
 #[cfg(test)]
 mod tests {
+    // Fixture IO uses unwrap as the assertion; a bad fixture should fail the test.
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
     use super::*;
     use std::fs;
     use std::path::PathBuf;
@@ -122,9 +125,8 @@ mod tests {
         for path in files {
             let text = fs::read_to_string(&path).unwrap();
             let original: serde_json::Value = serde_json::from_str(&text).unwrap();
-            let event: FioreEvent = serde_json::from_value(original.clone()).unwrap_or_else(|err| {
-                panic!("deserialize {}: {err}", path.display())
-            });
+            let event: FioreEvent = serde_json::from_value(original.clone())
+                .unwrap_or_else(|err| panic!("deserialize {}: {err}", path.display()));
             let back = serde_json::to_value(&event).unwrap();
             assert_eq!(original, back, "{}", path.display());
         }

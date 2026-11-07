@@ -131,6 +131,17 @@ $RustManifest = 'src-tauri/Cargo.toml'
 
 Write-Host "check.ps1 -Tier $Tier$(if ($ScopePaths.Count) { ' -Scope ' + ($ScopePaths -join ',') })"
 
+# generate_context! fails at compile time when frontendDist (dist/) is missing.
+if ($HasRust -and (Test-Scope $RustScope) -and (Test-Path 'src-tauri/tauri.conf.json') -and -not (Test-Path 'dist/index.html')) {
+  if (-not $HasNodeModules) {
+    Fail-Step 'frontend dist' 'node_modules missing (run npm ci)'
+  } elseif (-not (Test-NpmScript 'build')) {
+    Fail-Step 'frontend dist' 'no package.json build script'
+  } else {
+    Invoke-Step 'frontend dist' { & npm.cmd run build }
+  }
+}
+
 # ---- rust ----
 foreach ($step in @(
     @{ Name = 'rustfmt'; Args = @('fmt', '--manifest-path', $RustManifest, '--all', '--', '--check') },
@@ -169,7 +180,7 @@ if (-not (Test-Path 'biome.json')) {
     if ((Test-Path $s) -and (Test-Scope $TsScope)) { $biomePaths += $s }
   }
   if ($biomePaths.Count -eq 0) { $biomePaths = @('.') }
-  Invoke-Step 'biome' { & npx.cmd --no-install biome check @biomePaths }
+  Invoke-Step 'biome' { & npx.cmd --no-install biome check --no-errors-on-unmatched @biomePaths }
 }
 
 # ---- unit tests ----
@@ -233,9 +244,16 @@ if ($Tier -eq 'full') {
     $extra = @()
     if ($env:FIORE_TAURI_ARGS) { $extra = @($env:FIORE_TAURI_ARGS -split '\s+' | Where-Object { $_ }) }
     if (Test-NpmScript 'tauri') {
-      Invoke-Step 'tauri build' { & npm.cmd run tauri -- build @extra }
+      Invoke-Step 'tauri build' {
+        # npm test sets CI=1, which clap rejects for tauri's --ci (true|false).
+        if ($env:CI -eq '1') { $env:CI = 'true' }
+        & npm.cmd run tauri -- build @extra
+      }
     } else {
-      Invoke-Step 'tauri build' { & npx.cmd --no-install tauri build @extra }
+      Invoke-Step 'tauri build' {
+        if ($env:CI -eq '1') { $env:CI = 'true' }
+        & npx.cmd --no-install tauri build @extra
+      }
     }
   }
 

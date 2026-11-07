@@ -1,0 +1,15 @@
+{
+  "type": "state.snapshot",
+  "payload": {
+    "activity": "coding",
+    "mood": "content",
+    "season": "autumn",
+    "fullscreen": false,
+    "music": {
+      "playing": true,
+      "title": "Song",
+      "artist": "Artist",
+      "sourceApp": "Spotify.exe"
+    }
+  }
+}

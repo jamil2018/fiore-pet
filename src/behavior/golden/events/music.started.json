@@ -1,0 +1,4 @@
+{
+  "type": "music.started",
+  "payload": { "title": "Song", "artist": "Artist", "sourceApp": "Spotify.exe" }
+}
