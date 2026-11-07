@@ -51,7 +51,7 @@ Payload types: `Category = coding | writing | browsing | other`; `Mood = energet
 | `season.changed` | `{ season: Season }` | rust (`clock.rs`) |
 
 ### 3.1 Fullscreen (`sensors/fullscreen.rs`, `reactions/fullscreen.ts`)
-- **Detection:** `SHQueryUserNotificationState` returns `QUNS_BUSY`, `QUNS_RUNNING_D3D_FULL_SCREEN` or `QUNS_PRESENTATION_MODE`, **or** the foreground window rect equals its monitor rect. Desktop and shell windows are excluded. Emit only on state change.
+- **Detection:** `SHQueryUserNotificationState` returns `QUNS_BUSY`, `QUNS_RUNNING_D3D_FULL_SCREEN` or `QUNS_PRESENTATION_MODE`, **or** the foreground window rect covers (contains) its monitor rect. Desktop and shell windows are excluded. Emit only on state change.
 - `fullscreen.entered` -> `hide` sequence: pet waves, dives down with a dust puff, fades out, window hides.
 - `fullscreen.exited` -> `appear` sequence: pet pops up with a bounce, shakes off, resumes current state.
 - While hidden, state keeps updating (activity, mood, season, music) but no animation plays.
