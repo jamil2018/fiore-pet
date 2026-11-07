@@ -21,6 +21,8 @@ export interface AnimationDef {
   fps: number;
   loop: boolean;
   headOffset?: ReadonlyArray<readonly [number, number]>;
+  /** Sheet file name, copied on merge so the animator can find the decoded bitmap. */
+  image?: string;
 }
 
 export interface SheetDef {
@@ -40,6 +42,25 @@ export interface AtlasFile {
 export interface ImageSize {
   width: number;
   height: number;
+  /** Present when the loader still holds the decoded bitmap. */
+  image?: CanvasImageSource;
+}
+
+// main.ts measures images and then constructs the animator with only the merged
+// metadata, so the bitmap has to stay reachable or the first paint has nothing to draw.
+const decodedSprites = new Map<string, CanvasImageSource>();
+
+export function rememberSprite(name: string, source: CanvasImageSource): void {
+  decodedSprites.set(name, source);
+  const slash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+  if (slash >= 0) {
+    const base = name.slice(slash + 1);
+    if (base.length > 0 && base !== name) decodedSprites.set(base, source);
+  }
+}
+
+export function spriteSource(name: string): CanvasImageSource | undefined {
+  return decodedSprites.get(name);
 }
 
 export class AtlasError extends Error {
@@ -216,7 +237,7 @@ export function mergeAtlases(
         if (entries.has(id)) {
           throw new AtlasError(`duplicate key ${sheet.layer}/${sheet.variant ?? ''}/${name}`);
         }
-        entries.set(id, def);
+        entries.set(id, { ...def, image: sheet.image });
       }
     }
   }
@@ -257,7 +278,9 @@ export async function loadAtlases(loaders: AtlasLoaders): Promise<MergedAtlas> {
     }
     const file = parseAtlas(json, group);
     for (const sheet of file.sheets) {
-      validateImage(sheet, await loaders.loadImage(sheet.image));
+      const size = await loaders.loadImage(sheet.image);
+      validateImage(sheet, size);
+      if (size.image) rememberSprite(sheet.image, size.image);
     }
     files.push(file);
   }
@@ -267,7 +290,10 @@ export async function loadAtlases(loaders: AtlasLoaders): Promise<MergedAtlas> {
 export function browserImageLoader(src: string): Promise<ImageSize> {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onload = () => {
+      rememberSprite(src, image);
+      resolve({ width: image.naturalWidth, height: image.naturalHeight, image });
+    };
     image.onerror = () => reject(new AtlasError(`image failed: ${src}`));
     image.src = src;
   });
