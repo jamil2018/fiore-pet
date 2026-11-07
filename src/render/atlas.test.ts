@@ -187,4 +187,10 @@ describe('atlas loader', () => {
     expect(bodies.body('sit').count).toBe(1);
     expect(logs).toHaveLength(1);
   });
+
+  it('keeps the sheet image name on merged animations', () => {
+    const merged = mergeAtlases([bodyFile({ idle: idle(1) })]);
+    expect(merged.body('idle').image).toBe('base.png');
+    expect(merged.lookup('body', undefined, 'idle')?.image).toBe('base.png');
+  });
 });
