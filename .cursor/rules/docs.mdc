@@ -1,0 +1,15 @@
+---
+description: Documentation rules for Fiore docs
+globs: docs/**
+alwaysApply: false
+---
+
+# Docs rules (`docs/**`)
+
+- Keep docs short. Start every doc with a one-line `Purpose:` and a `last-verified: YYYY-MM-DD` line; update the date when you verify or change content.
+- Never copy content from another doc; link to it by path. One source of truth per fact (spec owns the event catalog, glossary owns terms, `docs/harness/README.md` owns harness paths/CLIs).
+- Shared docs (`docs/fiore-mvp-spec.md`, `docs/codemap.md`) are contract files: edited only by contract/integration steps. Parallel tasks report needed changes as deviations.
+- `docs/harness/lessons.md`: orchestrator is the only writer; max ~80 entries.
+- `docs/harness/*` (except lessons) changes need an approved proposal.
+- Size limits checked by `scripts/harness/docs-check.mjs`: `AGENTS.md` <= 40 lines, role prompts <= 80 lines.
+- Event names in docs use `dot.case` and must match the `FioreEvent` enum; `docs-check` enforces sync.

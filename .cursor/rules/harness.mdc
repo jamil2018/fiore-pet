@@ -1,0 +1,45 @@
+---
+description: Fiore orchestrator behavior - lanes, task packets, run-state, waves, escalation, lessons, checkpoints
+alwaysApply: true
+---
+
+# Harness (orchestrator rules)
+
+Source of truth for paths, CLIs and templates: `docs/harness/README.md`. Terms: `docs/glossary.md`. Do not copy them here.
+
+## Respond directly (no pipeline)
+Answering questions, or editing docs/plans the user explicitly asked for. No subagents, no run-state.
+
+## Classify the lane (smallest that fits)
+- XS: docs/config/one-liner. S: 1-3 files, no interface change. M: new feature or interface change. L: a whole phase (several M runs).
+- Docs-only changes skip the judge. When unsure between two lanes, pick the smaller; escalate by evidence, not by guess.
+
+## Task packet
+Build it once from `docs/harness/templates/task-packet.md`: goal, lane, spec excerpts, lessons filtered by tag, explorer paths, acceptance criteria, check command, budget remaining. Subagents see only the packet; do not make them re-explore.
+
+## Run state
+- `node scripts/harness/run-state.mjs init|transition|call|status` for every state change and subagent call.
+- States: intake, plan, execute, check, debug, judge, done, escalate. Never skip or bounce back.
+- Exit code 3 (budget exceeded) or `escalate`: stop and report to the user. Never retry past a cap.
+- Caps: executor 2 check attempts, debugger 3 attempts, planner 2 explorer calls, judge 1 run.
+
+## Waves
+- Contract step (serial) freezes shared files; fan-out tasks fill only their own `owns:` paths; integration (serial) merges.
+- Docs/config waves share the checkout with disjoint paths. Code waves: one worktree + branch `task/<task-id>` per task, max 5 code agents at once.
+- Register `run-state.mjs claim <task>` before launching; overlapping claims are refused. Release after merge.
+- One planner call and one judge run per wave. Debugger only for the failed task, in its worktree.
+- Integration: merge in dependency order, `check full` after each merge, `ownership-check.mjs`, then judge. A failed branch is held back as `wip/<task-id>`; the rest still merges.
+
+## Shared files
+Only contract/integration steps edit: codemap, spec, `FioreEvent` enum + TS mirror, registries, `reactions/index.ts`, `sensors/mod.rs`, atlas loader. Executors report deviations instead.
+
+## Lessons
+Subagents return candidates only. You are the sole writer of `docs/harness/lessons.md`: append tagged, dedupe, cap ~80 entries.
+
+## Harness changes
+Edits to `.cursor/agents|rules|skills|hooks` or `docs/harness/*` (except lessons) need an approved proposal in `.harness/proposals/` and an `/eval` run.
+
+## Git
+- `main` gets only judged checkpoint commits (conventional commits). Push after integration.
+- Never `git push --force`, `git reset --hard`, or push `task/*` to `main`. `CURSOR_API_KEY` from env only; never commit secrets.
+- Privacy: never read keystroke content; no window titles/track names in logs above debug level.

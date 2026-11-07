@@ -1,0 +1,19 @@
+---
+description: Rust backend rules for Fiore (sensors, hub, window, logging)
+globs: src-tauri/**
+alwaysApply: false
+---
+
+# Rust rules (`src-tauri/**`)
+
+Details live in `docs/conventions.md`, `docs/architecture.md` and `docs/reference/windows-crate.md` (feature flags, COM/WinRT init, HWND lifetimes) and `docs/reference/win-apis.md`. Read them; do not guess niche API usage.
+
+- **No panics in sensors.** No `unwrap`/`expect` outside tests. A sensor failure is logged via `tracing` and that sensor is disabled; it never crashes the app.
+- **COM/WinRT:** initialize COM on each sensor thread that needs it; one task/thread per sensor.
+- **Errors:** `thiserror` types; propagate with `?`.
+- **`unsafe`:** minimal, with a `// SAFETY:` comment stating the invariant.
+- **Lints:** clippy `-D warnings`. No `#[allow]` without a stated reason.
+- **Logging:** `tracing` JSON to `logs/`. Window titles and track names only at debug level.
+- **Privacy:** never read keystroke content.
+- **Sensors:** implement the `Sensor` trait, mockable through traits, polling rates per spec.
+- **Ownership:** edit only your task's `owns:` paths. `events.rs`, `hub.rs`, `sensors/mod.rs` are contract files; report needed changes as deviations.

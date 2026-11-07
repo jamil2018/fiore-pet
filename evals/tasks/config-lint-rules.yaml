@@ -1,0 +1,50 @@
+# Purpose: seed eval 2. Small config change across a few files; should be classified S and get a judge verdict.
+# last-verified: 2026-11-07
+
+id: config-lint-rules
+description: Enable two existing lint rules in sandbox/lint.config.json and add sample files (S lane)
+
+base_commit: p0-harness
+
+prompt: |
+  The tiny linter in sandbox/lint.mjs is configured by sandbox/lint.config.json, which only enables
+  "no-todo" right now. Update the config so that:
+    - "max-line-length" is an error with a limit of 100 characters
+    - "no-trailing-spaces" is a warning
+    - "no-todo" stays an error
+  Do not edit sandbox/lint.mjs. Then add two sample files under sandbox/samples/:
+    - long-line.txt: exactly one line of 101 characters
+    - clean.txt: two short lines with no trailing spaces and no TODO
+  Use the rule config forms documented at the top of lint.mjs.
+
+expected_lane: S
+expected_judge: full
+
+allowed_paths:
+  - sandbox/lint.config.json
+  - sandbox/samples/**
+
+seed_files:
+  - src: evals/seed/config-lint-rules/sandbox/lint.mjs
+    dest: sandbox/lint.mjs
+  - src: evals/seed/config-lint-rules/sandbox/lint.config.json
+    dest: sandbox/lint.config.json
+
+hidden_tests:
+  - src: evals/hidden/config-lint-rules/lint-config.hidden.test.mjs
+    dest: eval-hidden/lint-config.hidden.test.mjs
+
+hidden_commands:
+  - node --test eval-hidden/lint-config.hidden.test.mjs
+
+budget:
+  max_calls: 5
+  max_retries: 2
+  max_wall_seconds: 900
+
+graders:
+  check_full: true
+  hidden_tests: true
+  rubric_min: 11
+  lane_correct: true
+  within_budget: true

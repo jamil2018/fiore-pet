@@ -1,0 +1,8 @@
+{
+  "setup-worktree-windows": [
+    "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-worktree-windows.ps1"
+  ],
+  "setup-worktree": [
+    "npm ci"
+  ]
+}

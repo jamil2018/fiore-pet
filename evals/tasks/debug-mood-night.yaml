@@ -1,0 +1,52 @@
+# Purpose: seed eval 3. Seeded bug in a small script; the failure is a crash far from the root cause, so
+#          the work should go through the debugger and fix the root cause (not patch the symptom).
+# last-verified: 2026-11-07
+
+id: debug-mood-night
+description: Fix a night-time crash caused by a broken range check in sandbox/mood.mjs (debugger, root cause)
+
+base_commit: p0-harness
+
+prompt: |
+  Bug report: running `node sandbox/mood.mjs 23` crashes with
+  "TypeError: Cannot read properties of undefined (reading 'toLowerCase')". It works for daytime hours
+  (for example `node sandbox/mood.mjs 8` prints "energetic (+20% speed)"). The intended behaviour is in
+  the comment at the top of sandbox/mood.mjs. Find and fix the root cause, and add a regression test to
+  sandbox/mood.test.mjs. Do not delete or weaken existing tests.
+
+expected_lane: S
+expected_judge: full
+expected_roles:
+  - debugger
+
+allowed_paths:
+  - sandbox/**
+
+protected_paths:
+  - sandbox/mood.test.mjs
+
+seed_files:
+  - src: evals/seed/debug-mood-night/sandbox/mood.mjs
+    dest: sandbox/mood.mjs
+  - src: evals/seed/debug-mood-night/sandbox/mood.test.mjs
+    dest: sandbox/mood.test.mjs
+
+hidden_tests:
+  - src: evals/hidden/debug-mood-night/mood.hidden.test.mjs
+    dest: eval-hidden/mood.hidden.test.mjs
+
+hidden_commands:
+  - node --test eval-hidden/mood.hidden.test.mjs
+  - node --test sandbox/mood.test.mjs
+
+budget:
+  max_calls: 5
+  max_retries: 3
+  max_wall_seconds: 900
+
+graders:
+  check_full: true
+  hidden_tests: true
+  rubric_min: 11
+  lane_correct: true
+  within_budget: true

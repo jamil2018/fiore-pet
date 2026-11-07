@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "status": "placeholder",
+  "note": "Placeholder structure. The real baseline is recorded in W0.2 (node evals/run.mjs --write-baseline --yes) and later changes only after the user approves.",
+  "recorded": null,
+  "approvedBy": null,
+  "base": null,
+  "model": null,
+  "sdk": "@cursor/sdk",
+  "thresholds": {
+    "callsIncreasePct": 30,
+    "rubricMayDrop": false,
+    "passMayBecomeFail": false
+  },
+  "tasks": {
+    "docs-glossary-wave-budget": { "pass": null, "lane": null, "calls": null, "retries": null, "rubric": null, "wallMs": null },
+    "config-lint-rules": { "pass": null, "lane": null, "calls": null, "retries": null, "rubric": null, "wallMs": null },
+    "debug-mood-night": { "pass": null, "lane": null, "calls": null, "retries": null, "rubric": null, "wallMs": null }
+  }
+}

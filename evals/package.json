@@ -1,0 +1,10 @@
+{
+  "name": "fiore-evals",
+  "private": true,
+  "type": "module",
+  "description": "Eval runner dependencies, kept separate from the app's package.json. Install with: npm install --prefix evals",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@cursor/sdk": "^1.3.1"
+  }
+}

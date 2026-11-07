@@ -1,0 +1,36 @@
+# Purpose: seed eval 1. Docs-only change; should be classified XS and skip the judge entirely.
+# last-verified: 2026-11-07
+
+id: docs-glossary-wave-budget
+description: Add one row to docs/glossary.md (docs-only, XS, no judge)
+
+base_commit: p0-harness
+
+prompt: |
+  Add a row to the table in docs/glossary.md for the term "Wave budget". The meaning is: the sum of the
+  task budgets in a wave plus 4 extra calls for the planner, the judge and integration. Put the row
+  directly after the existing "Budget" row and match the style of the neighbouring rows. Change nothing else.
+
+expected_lane: XS
+expected_judge: none
+
+allowed_paths:
+  - docs/glossary.md
+
+hidden_tests:
+  - src: evals/hidden/docs-glossary-wave-budget/glossary.hidden.test.mjs
+    dest: eval-hidden/glossary.hidden.test.mjs
+
+hidden_commands:
+  - node --test eval-hidden/glossary.hidden.test.mjs
+
+budget:
+  max_calls: 3
+  max_retries: 1
+  max_wall_seconds: 600
+
+graders:
+  check_full: true
+  hidden_tests: true
+  lane_correct: true
+  within_budget: true

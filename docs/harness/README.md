@@ -128,7 +128,7 @@ node scripts/dev/emit-event.mjs <event> [json]           # Phase 1
 ## 7. Naming conventions
 
 - Task id: `<wave>-<slug>` lowercase kebab (e.g. `w20-music`). Run id: `<task-id>-<yyyymmddhhmmss>`.
-- Branches: `task/<wave>-<task-id>` (local, worktree), `wip/<task-id>` (held back, pushed), `main` (checkpoints only).
+- Branches: `task/<task-id>` (local worktree). The task id is already `<wave>-<slug>`, so `w20-music` is branch `task/w20-music`. `wip/<task-id>` (held back, pushed), `main` (checkpoints only).
 - Tags: `p0-harness`, `p1-foundation`, `p2-mvp`, `v0.1.0`.
 - Commits: conventional (`feat(music): ...`, `docs(harness): ...`, `chore: ...`). Checkpoint commits follow a judge PASS.
 - Events: `dot.case` (`music.started`).

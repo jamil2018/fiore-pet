@@ -1,0 +1,2 @@
+Phase 0 bootstrap marker. While this file exists, stop-gate gates 2 (eval) and 3 (proposal) are waived.
+Delete it after W0.2 records the real evals/baseline.json. See .harness/proposals/001-phase0-harness-bootstrap.md.

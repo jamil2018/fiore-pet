@@ -1,0 +1,19 @@
+---
+description: TypeScript frontend rules for Fiore (engine, render, interaction, bridge)
+globs: src/**
+alwaysApply: false
+---
+
+# TypeScript rules (`src/**`)
+
+Details live in `docs/conventions.md`, `docs/architecture.md`, `docs/reference/sprite-atlas.md` and `docs/reference/tauri-v2.md`.
+
+- **Strict types:** `strict` on, no `any`. Lint/format with Biome.
+- **Engine is pure:** `src/behavior/` takes events in and returns layer selections; no I/O, timers, DOM or Tauri calls. This keeps golden replay tests deterministic.
+- **DOM only in `src/render/`** (and the debug panel). Interaction code emits events; it does not draw.
+- **Events:** `src/events.ts` mirrors the Rust `FioreEvent` enum; names are `dot.case`. It is a contract file.
+- **Reactions:** one file per feature in `src/behavior/reactions/`; `index.ts` is a contract file.
+- **Bridge:** real Tauri bridge and mock bridge (`src/bridge/mock.ts`) share one interface.
+- **Sprites:** 32x32 grid, per-group atlases, nearest-neighbor scaling.
+- **Tests:** Vitest; behavior changes need a golden replay test.
+- **Ownership:** edit only your task's `owns:` paths; report contract-file changes as deviations.

@@ -1,0 +1,29 @@
+# Purpose: eval task shape. Copy to evals/tasks/<id>.yaml. The runner (evals/run.mjs) checks out base_commit in a fresh worktree, sends `prompt` through /ship, copies hidden_tests in afterwards, then grades.
+# last-verified: 2026-11-07
+
+id: <slug>                  # lowercase kebab; matches the file name
+description: <one line>
+
+base_commit: <tag-or-sha>   # pin to a phase tag (p0-harness, p1-foundation, ...) so runs are reproducible
+
+prompt: |
+  <The exact request given to the agent, as a user would phrase it.>
+
+expected_lane: XS           # XS | S | M | L
+
+hidden_tests:               # copied into the worktree only after the run; the agent never sees them
+  - src: evals/hidden/<id>/<file>
+    dest: <repo-relative path>
+  # use an empty list ([]) for tasks graded without tests
+
+budget:
+  max_calls: 3              # subagent calls (lane budget)
+  max_retries: 2            # check/debug retries
+  max_wall_seconds: 600
+
+graders:
+  check_full: true          # `check.ps1 -Tier full` passes
+  hidden_tests: true        # hidden tests pass
+  rubric_min: 11            # judge total out of 14; omit when the lane skips the judge
+  lane_correct: true        # classified lane equals expected_lane
+  within_budget: true       # calls and retries within budget
