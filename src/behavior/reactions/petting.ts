@@ -1,17 +1,44 @@
-import { defineReaction } from '../types';
+import { defineReaction, type Facing, switchEvent } from '../types';
 
-export const pettingReaction = defineReaction<Record<string, never>>({
+interface PettingSlice {
+  hovering: boolean;
+  facing: Facing | null;
+}
+
+function resting(): PettingSlice {
+  return { hovering: false, facing: null };
+}
+
+export const pettingReaction = defineReaction<PettingSlice>({
   id: 'petting',
   init() {
-    return {};
+    return resting();
   },
-  reduce(slice) {
-    return { slice, effects: [] };
+  reduce(slice, event) {
+    const next = switchEvent<PettingSlice>(event, {
+      'state.snapshot': () => resting(),
+      'fullscreen.entered': () => resting(),
+      'fullscreen.exited': () => slice,
+      'pet.hover_start': () => ({ hovering: true, facing: null }),
+      'pet.stroke': (stroke) =>
+        slice.hovering ? { hovering: true, facing: stroke.payload.direction } : slice,
+      'pet.petted': () => slice,
+      'pet.hover_end': () => resting(),
+      'app.category_changed': () => slice,
+      'music.started': () => slice,
+      'music.level': () => slice,
+      'music.track_changed': () => slice,
+      'music.stopped': () => slice,
+      'time.mood_changed': () => slice,
+      'season.changed': () => slice,
+    });
+    return { slice: next, effects: [] };
   },
   tick(slice) {
     return { slice, effects: [] };
   },
-  contribute() {
-    return null;
+  contribute(slice) {
+    if (!slice.hovering || slice.facing === null) return null;
+    return { tier: 'petting', facing: slice.facing };
   },
 });
