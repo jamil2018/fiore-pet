@@ -56,6 +56,8 @@ export type Tier = (typeof TIERS)[number];
 export const FEATURES = ['fullscreen', 'petting', 'activity', 'music', 'mood', 'season'] as const;
 export type FeatureId = (typeof FEATURES)[number];
 
+export type Facing = 'left' | 'right';
+
 export interface World {
   activity: Category;
   mood: Mood;
@@ -88,6 +90,10 @@ export interface Resolution {
   bubble: string | null;
   visible: boolean;
   move: 'stay' | 'wander';
+  /** Horizontal mirror. `'right'` when no contribution sets it. */
+  facing: Facing;
+  /** Overlay playback weight, 0..1. `0` when no contribution sets it. */
+  overlayLevel: number;
 }
 
 export interface Engine {
@@ -104,6 +110,9 @@ export interface Contribution {
   speed?: number;
   bubble?: string | null;
   hidden?: boolean;
+  facing?: Facing;
+  /** 0..1. The resolver keeps the highest-priority value. */
+  overlayLevel?: number;
 }
 
 export type Effect = { kind: 'oneShot'; animation: OneShot };

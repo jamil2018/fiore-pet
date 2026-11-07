@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { FioreEvent } from '../events';
 import { createEngine } from './engine';
+import { REACTIONS } from './reactions';
 import { defineReaction, type EngineConfig, type OneShot, type Rng } from './types';
 
 const ONE_SHOT_MS = {
@@ -47,6 +48,8 @@ describe('createEngine', () => {
       bubble: null,
       visible: true,
       move: 'wander',
+      facing: 'right',
+      overlayLevel: 0,
     });
   });
 
@@ -154,7 +157,7 @@ describe('createEngine', () => {
         event: { type: 'music.level', payload: { peak: 0.99 } },
       }),
     ).toMatchObject({ body: 'jump' });
-    expect(calls).toEqual([0]);
+    expect(calls).toEqual([...Array.from({ length: REACTIONS.length }, () => 0), 0]);
     engine.handle({ kind: 'tick', now: 2200 });
     engine.handle({ kind: 'event', now: 2300, event: { type: 'music.stopped', payload: {} } });
     expect(
@@ -164,7 +167,7 @@ describe('createEngine', () => {
         event: { type: 'music.level', payload: { peak: 0.99 } },
       }),
     ).toMatchObject({ body: 'idle', accessory: null, overlay: null });
-    expect(calls).toEqual([0]);
+    expect(calls).toEqual([...Array.from({ length: REACTIONS.length }, () => 0), 0]);
   });
 
   it('ac_mu_4_track_bubble_clears_after_three_seconds', () => {
@@ -268,7 +271,7 @@ describe('createEngine', () => {
     let ticks = 0;
     let contributes = 0;
     const probe = defineReaction<null>({
-      id: 'activity',
+      id: 'music',
       init: () => null,
       reduce: (slice, event) => {
         reduces += 1;
@@ -324,5 +327,104 @@ describe('createEngine', () => {
     });
     const engine = createEngine(config(), [hider]);
     expect(engine.handle({ kind: 'tick', now: 0 })).toMatchObject({ body: null, visible: false });
+  });
+
+  it('an activity tick effect does not suppress a due yawn', () => {
+    const activity = defineReaction<null>({
+      id: 'activity',
+      init: () => null,
+      reduce: (slice) => ({ slice, effects: [] }),
+      tick: (slice, ctx) => ({
+        slice,
+        effects: ctx.now === 120_000 ? [{ kind: 'oneShot', animation: 'wag' }] : [],
+      }),
+      contribute: () => null,
+    });
+    const engine = createEngine(config(scripted(() => 0)), [activity]);
+    engine.handle({
+      kind: 'event',
+      now: 0,
+      event: {
+        type: 'state.snapshot',
+        payload: { ...snapshot.payload, activity: 'coding', mood: 'sleepy' },
+      },
+    });
+    expect(engine.handle({ kind: 'tick', now: 120_000 }).body).toBe('yawn');
+    expect(engine.handle({ kind: 'tick', now: 121_000 }).body).toBe('wag');
+  });
+
+  it('a music reaction effect replaces the default notice', () => {
+    const music = defineReaction<null>({
+      id: 'music',
+      init: () => null,
+      reduce: (slice, event) => ({
+        slice,
+        effects: event.type === 'music.started' ? [{ kind: 'oneShot', animation: 'jump' }] : [],
+      }),
+      tick: (slice) => ({ slice, effects: [] }),
+      contribute: () => null,
+    });
+    const engine = createEngine(config(), [music]);
+    engine.handle({ kind: 'event', now: 0, event: snapshot });
+    expect(
+      engine.handle({
+        kind: 'event',
+        now: 10,
+        event: { type: 'music.started', payload: { title: 't', artist: 'a', sourceApp: 'app' } },
+      }).body,
+    ).toBe('jump');
+  });
+
+  it('a same-tier body contribution from a reaction beats the engine', () => {
+    const sitter = defineReaction<null>({
+      id: 'activity',
+      init: () => null,
+      reduce: (slice) => ({ slice, effects: [] }),
+      tick: (slice) => ({ slice, effects: [] }),
+      contribute: () => ({ tier: 'idle', body: 'sit' }),
+    });
+    const engine = createEngine(config(), [sitter]);
+    expect(engine.handle({ kind: 'tick', now: 0 }).body).toBe('sit');
+  });
+
+  it('a reaction random draw does not change the default jump', () => {
+    const script = [0.01, 0];
+    let draws = 0;
+    let reactionDraws = 0;
+    const rng: Rng = {
+      next: () => {
+        const value = script[draws] ?? 0.99;
+        draws += 1;
+        return value;
+      },
+    };
+    const music = defineReaction<null>({
+      id: 'music',
+      init: () => null,
+      reduce: (slice, _event, ctx) => {
+        reactionDraws += 1;
+        ctx.rng.next();
+        return { slice, effects: [] };
+      },
+      tick: (slice) => ({ slice, effects: [] }),
+      contribute: () => null,
+    });
+    const engine = createEngine(config(rng), [music]);
+    engine.handle({ kind: 'event', now: 0, event: snapshot });
+    engine.handle({
+      kind: 'event',
+      now: 0,
+      event: { type: 'music.started', payload: { title: 't', artist: 'a', sourceApp: 'app' } },
+    });
+    engine.handle({ kind: 'tick', now: 1000 });
+    expect(
+      engine.handle({
+        kind: 'event',
+        now: 1100,
+        event: { type: 'music.level', payload: { peak: 0.95 } },
+      }).body,
+    ).toBe('jump');
+    expect(draws).toBe(2);
+    expect(reactionDraws).toBeGreaterThan(0);
   });
 });

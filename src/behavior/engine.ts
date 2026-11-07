@@ -10,11 +10,14 @@ import {
   type EngineConfig,
   type EngineInput,
   type FaceName,
+  type Facing,
+  type FeatureId,
   type OneShot,
   type OutfitName,
   type OverlayName,
   type ReactionContext,
   type Resolution,
+  type Rng,
   switchEvent,
   TIERS,
   type Tier,
@@ -61,6 +64,37 @@ const BUBBLE_MS = 3000;
 const DAY_MS = 86_400_000;
 const YAWN_MIN_MS = 120_000;
 const YAWN_SPAN_MS = 120_000;
+const U32 = 4294967296;
+
+interface DefaultEffect {
+  feature: FeatureId;
+  effect: Effect;
+}
+
+interface ReactionPass {
+  effects: Effect[];
+  features: ReadonlySet<FeatureId>;
+}
+
+function mulberry32(seed: number): Rng {
+  let state = seed >>> 0;
+  return {
+    next() {
+      state = (state + 0x6d2b79f5) | 0;
+      let mixed = Math.imul(state ^ (state >>> 15), 1 | state);
+      mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed)) ^ mixed;
+      return ((mixed ^ (mixed >>> 14)) >>> 0) / U32;
+    },
+  };
+}
+
+function reactionStream(parent: Rng): Rng {
+  return mulberry32(Math.floor(parent.next() * U32));
+}
+
+function defaultOneShot(feature: FeatureId, animation: OneShot): DefaultEffect {
+  return { feature, effect: { kind: 'oneShot', animation } };
+}
 
 type PetPhase = 'off' | 'hover' | 'stroke' | 'happy' | 'afterglow';
 
@@ -140,6 +174,8 @@ export function createEngine(
   reactions: readonly AnyReaction[] = REACTIONS,
 ): Engine {
   let world = defaultWorld();
+  // One draw per reaction, registry order, before any jump or yawn roll.
+  const reactionRngs = reactions.map(() => reactionStream(config.rng));
   const slices: unknown[] = reactions.map((reaction) => reaction.init(world));
   let pet: PetPhase = 'off';
   let petUntil: number | null = null;
@@ -158,8 +194,8 @@ export function createEngine(
     return YAWN_MIN_MS + Math.floor(config.rng.next() * (YAWN_SPAN_MS + 1));
   }
 
-  function context(now: number): ReactionContext {
-    return { now, rng: config.rng, world, config };
+  function context(now: number, rng: Rng): ReactionContext {
+    return { now, rng, world, config };
   }
 
   function resetTransient(): void {
@@ -264,8 +300,8 @@ export function createEngine(
     }
   }
 
-  function builtinEventEffects(previous: World, event: FioreEvent, now: number): Effect[] {
-    return switchEvent<Effect[]>(event, {
+  function builtinEventEffects(previous: World, event: FioreEvent, now: number): DefaultEffect[] {
+    return switchEvent<DefaultEffect[]>(event, {
       'state.snapshot': () => [],
       'fullscreen.entered': () => [],
       'fullscreen.exited': () => [],
@@ -273,60 +309,66 @@ export function createEngine(
       'pet.stroke': () => [],
       'pet.petted': () => [],
       'pet.hover_end': (ended) =>
-        ended.payload.wasPetted ? [{ kind: 'oneShot', animation: 'wag' }] : [],
+        ended.payload.wasPetted ? [defaultOneShot('petting', 'wag')] : [],
       'app.category_changed': () => [],
-      'music.started': () => [{ kind: 'oneShot', animation: 'notice' }],
+      'music.started': () => [defaultOneShot('music', 'notice')],
       'music.level': (level) => {
         if (!world.music.playing || !(level.payload.peak > 0.8) || jumpQueued()) return [];
         if (config.rng.next() >= JUMP_CHANCE) return [];
-        return [{ kind: 'oneShot', animation: 'jump' }];
+        return [defaultOneShot('music', 'jump')];
       },
-      'music.track_changed': () => [{ kind: 'oneShot', animation: 'notice' }],
+      'music.track_changed': () => [defaultOneShot('music', 'notice')],
       'music.stopped': () => [],
       'time.mood_changed': () => {
         if (world.mood !== 'energetic') return [];
         if (lastStretchAt !== null && now - lastStretchAt < DAY_MS) return [];
         lastStretchAt = now;
-        return [{ kind: 'oneShot', animation: 'stretch' }];
+        return [defaultOneShot('mood', 'stretch')];
       },
       'season.changed': () => {
         if (twirled || previous.season === world.season) return [];
         twirled = true;
-        return [{ kind: 'oneShot', animation: 'twirl' }];
+        return [defaultOneShot('season', 'twirl')];
       },
     });
   }
 
-  function builtinTickEffects(now: number): Effect[] {
+  function builtinTickEffects(now: number): DefaultEffect[] {
     if (world.mood !== 'sleepy' || nextYawnAt === null || now < nextYawnAt) return [];
     nextYawnAt = now + yawnDelay();
-    return [{ kind: 'oneShot', animation: 'yawn' }];
+    return [defaultOneShot('mood', 'yawn')];
   }
 
-  function runReduce(event: FioreEvent, now: number): Effect[] {
-    const ctx = context(now);
+  function runReduce(event: FioreEvent, now: number): ReactionPass {
     const effects: Effect[] = [];
+    const features = new Set<FeatureId>();
     for (let index = 0; index < reactions.length; index += 1) {
       const reaction = reactions[index];
-      if (!reaction) continue;
-      const reduced = reaction.reduce(slices[index], event, ctx);
+      const rng = reactionRngs[index];
+      if (!reaction || !rng) continue;
+      const reduced = reaction.reduce(slices[index], event, context(now, rng));
       slices[index] = reduced.slice;
+      if (reduced.effects.length === 0) continue;
+      features.add(reaction.id);
       effects.push(...reduced.effects);
     }
-    return effects;
+    return { effects, features };
   }
 
-  function runTick(now: number): Effect[] {
-    const ctx = context(now);
+  function runTick(now: number): ReactionPass {
     const effects: Effect[] = [];
+    const features = new Set<FeatureId>();
     for (let index = 0; index < reactions.length; index += 1) {
       const reaction = reactions[index];
-      if (!reaction) continue;
-      const ticked = reaction.tick(slices[index], ctx);
+      const rng = reactionRngs[index];
+      if (!reaction || !rng) continue;
+      const ticked = reaction.tick(slices[index], context(now, rng));
       slices[index] = ticked.slice;
+      if (ticked.effects.length === 0) continue;
+      features.add(reaction.id);
       effects.push(...ticked.effects);
     }
-    return effects;
+    return { effects, features };
   }
 
   function playEffects(effects: readonly Effect[], now: number): void {
@@ -338,20 +380,24 @@ export function createEngine(
     );
   }
 
-  // A reaction that emits effects owns that step. Stubs emit none, so the engine fills the spec one-shots.
+  // A reaction's effects replace only that feature's default one-shots. Other features still play.
   function effectsForEvent(
     previous: World,
     event: FioreEvent,
     now: number,
-    fromReactions: Effect[],
+    fromReactions: ReactionPass,
   ): Effect[] {
-    if (fromReactions.length > 0) return fromReactions;
-    return builtinEventEffects(previous, event, now);
+    const defaults = builtinEventEffects(previous, event, now)
+      .filter((item) => !fromReactions.features.has(item.feature))
+      .map((item) => item.effect);
+    return [...defaults, ...fromReactions.effects];
   }
 
-  function effectsForTick(now: number, fromReactions: Effect[]): Effect[] {
-    if (fromReactions.length > 0) return fromReactions;
-    return builtinTickEffects(now);
+  function effectsForTick(now: number, fromReactions: ReactionPass): Effect[] {
+    const defaults = builtinTickEffects(now)
+      .filter((item) => !fromReactions.features.has(item.feature))
+      .map((item) => item.effect);
+    return [...defaults, ...fromReactions.effects];
   }
 
   function engineContributions(now: number): Contribution[] {
@@ -393,11 +439,11 @@ export function createEngine(
 
   function resolve(now: number): Resolution {
     const contributions = engineContributions(now);
-    const ctx = context(now);
     for (let index = 0; index < reactions.length; index += 1) {
       const reaction = reactions[index];
-      if (!reaction) continue;
-      const extra = reaction.contribute(slices[index], ctx);
+      const rng = reactionRngs[index];
+      if (!reaction || !rng) continue;
+      const extra = reaction.contribute(slices[index], context(now, rng));
       if (extra) contributions.push(extra);
     }
 
@@ -416,6 +462,10 @@ export function createEngine(
     let accessory: AccessoryName | null = null;
     let accessoryRank = Number.POSITIVE_INFINITY;
     let sawAccessory = false;
+    let facing: Facing = 'right';
+    let facingRank = Number.POSITIVE_INFINITY;
+    let overlayLevel = 0;
+    let overlayLevelRank = Number.POSITIVE_INFINITY;
 
     for (const contribution of contributions) {
       const rank = tierRank(contribution.tier);
@@ -448,6 +498,14 @@ export function createEngine(
         accessoryRank = rank;
         sawAccessory = true;
       }
+      if (contribution.facing !== undefined && rank <= facingRank) {
+        facing = contribution.facing;
+        facingRank = rank;
+      }
+      if (contribution.overlayLevel !== undefined && rank <= overlayLevelRank) {
+        overlayLevel = contribution.overlayLevel;
+        overlayLevelRank = rank;
+      }
     }
 
     if (!sawAccessory) accessory = null;
@@ -475,7 +533,19 @@ export function createEngine(
       move = 'wander';
     }
 
-    return { body, face, outfit, accessory, overlay, speed, bubble: bubbleText, visible, move };
+    return {
+      body,
+      face,
+      outfit,
+      accessory,
+      overlay,
+      speed,
+      bubble: bubbleText,
+      visible,
+      move,
+      facing,
+      overlayLevel,
+    };
   }
 
   function handleEvent(event: FioreEvent, now: number): Resolution {

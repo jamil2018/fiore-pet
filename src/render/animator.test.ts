@@ -102,6 +102,8 @@ function resolution(partial: Partial<Resolution> = {}): Resolution {
     bubble: null,
     visible: true,
     move: 'stay',
+    facing: 'right',
+    overlayLevel: 0,
     ...partial,
   };
 }
@@ -226,9 +228,48 @@ describe('animator', () => {
     const animator = createAnimator(view.canvas, atlas());
     const frame = resolution({ body: 'idle', face: 'content', overlay: 'headbob' });
     animator.render(frame, 0);
-    animator.render(frame, 125);
+    // overlayLevel 0 plays headbob at 0.75x, so frame 1 lands at 167ms, not 125ms.
+    animator.render(frame, 167);
     expect(view.recorded.draws[2]).toEqual([0, 0, 32, 32, 0, 0, 96, 96]);
     expect(view.recorded.draws[3]).toEqual([0, 128, 32, 32, 0, -6, 96, 96]);
+  });
+
+  it('mirrors every layer and the head offset when facing left', () => {
+    rememberSprite('pet.png', pet);
+    const view = fakeCanvas();
+    const animator = createAnimator(view.canvas, atlas());
+    animator.render(resolution({ body: 'walk', accessory: 'headphones', facing: 'left' }), 0);
+    expect(view.recorded.draws).toEqual([
+      [0, 32, 32, 32, 96, 0, -96, 96],
+      [32, 224, 32, 32, 90, 0, -96, 96],
+    ]);
+  });
+
+  it('speeds the overlay with overlayLevel and doubles headbob y at 0.6', () => {
+    rememberSprite('pet.png', pet);
+    const quiet = fakeCanvas();
+    const quietAnimator = createAnimator(quiet.canvas, atlas());
+    const quietFrame = resolution({
+      body: 'idle',
+      face: 'content',
+      overlay: 'headbob',
+      overlayLevel: 0,
+    });
+    quietAnimator.render(quietFrame, 0);
+    quietAnimator.render(quietFrame, 125);
+    expect(quiet.recorded.draws[3]).toEqual([0, 128, 32, 32, 0, 0, 96, 96]);
+
+    const loud = fakeCanvas();
+    const loudAnimator = createAnimator(loud.canvas, atlas());
+    const loudFrame = resolution({
+      body: 'idle',
+      face: 'content',
+      overlay: 'headbob',
+      overlayLevel: 1,
+    });
+    loudAnimator.render(loudFrame, 0);
+    loudAnimator.render(loudFrame, 100);
+    expect(loud.recorded.draws[3]).toEqual([0, 128, 32, 32, 0, -12, 96, 96]);
   });
 
   it('advances faster when mood speed is above 1 and holds a one-shot on the last frame', () => {

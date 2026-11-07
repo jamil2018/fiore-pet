@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "group": "activity",
+  "frame": {
+    "w": 32,
+    "h": 32
+  },
+  "sheets": [
+    {
+      "layer": "accessory",
+      "image": "base.png",
+      "variant": "laptop",
+      "animations": {
+        "*": {
+          "row": 17,
+          "start": 1,
+          "count": 1,
+          "fps": 1,
+          "loop": true
+        }
+      }
+    },
+    {
+      "layer": "accessory",
+      "image": "base.png",
+      "variant": "notepad",
+      "animations": {
+        "*": {
+          "row": 17,
+          "start": 2,
+          "count": 1,
+          "fps": 1,
+          "loop": true
+        }
+      }
+    },
+    {
+      "layer": "accessory",
+      "image": "base.png",
+      "variant": "tablet",
+      "animations": {
+        "*": {
+          "row": 17,
+          "start": 3,
+          "count": 1,
+          "fps": 1,
+          "loop": true
+        }
+      }
+    }
+  ]
+}

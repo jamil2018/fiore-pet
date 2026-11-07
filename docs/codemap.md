@@ -19,6 +19,7 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src-tauri/src/debug.rs`: dev-only `emit_debug_event` command and loopback TCP injector (event injection for `emit-event.mjs`, debug panel).
 - `src-tauri/src/autostart.rs`: autostart toggle wired to tray. [planned W3.0]
 - `src-tauri/src/sensors/mod.rs`: `Sensor` trait, registration of all 5 sensors (stubs from W1.0). Contract file.
+- `src-tauri/src/sensors/win.rs`: shared Win32 helpers (`WinRtGuard`, `ComGuard`, `foreground`, `is_own_pid`). Contract file. `#[cfg(windows)]`.
 - `src-tauri/src/sensors/media.rs`: GSMTC session -> `music.started`, `music.track_changed`, `music.stopped` (2 s stop debounce). [stub W1.0, fill w20-music]
 - `src-tauri/src/sensors/audio_peak.rs`: `IAudioMeterInformation` peak -> `music.level` at ~15 Hz while playing. [stub W1.0, fill w20-music]
 - `src-tauri/src/sensors/foreground.rs`: 500 ms foreground poll, classifier, 1.5 s hold -> `app.category_changed`. [stub W1.0, fill w20-app-category]
@@ -51,13 +52,13 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src/debug/panel.ts`: dev-only panel that fires fake events.
 
 ## Sprites (`public/sprites/`, `<group>.png` + `<group>.json` each)
-- `public/sprites/base.*`: body idle, walk, sit, notice, jump, dance, headbob, lean, happy, wag, hide, appear, stretch, yawn, twirl, plus face/outfit/accessory placeholders.
-- `public/sprites/activity.*`: code, think, write, browse, props (laptop, notepad, tablet). [planned W2.0 `w20-app-category`]
-- `public/sprites/music.*`: dance, headbob, headphones. [planned W2.0 `w20-music`]
-- `public/sprites/petting.*`: lean, happy, wag, hearts. [planned W2.0 `w20-petting`]
-- `public/sprites/fullscreen.*`: hide, appear, dust puff. [planned W2.0 `w20-fullscreen`]
-- `public/sprites/outfits.*`: seasonal outfits, twirl. [planned W2.0 `w20-mood-season`]
-- `public/sprites/faces.*`: mood faces, stretch, yawn. [planned W2.0 `w20-mood-season`]
+- `public/sprites/base.*`: body idle, walk, sit, notice, jump. Frozen after the W2.0 contract. Group sheets may still reference `base.png`.
+- `public/sprites/activity.*`: accessory laptop, notepad, tablet. Body code, think, write, browse are added by the task. [stub W2.0, fill w20-app-category]
+- `public/sprites/music.*`: body dance, headbob; accessory headphones. [stub W2.0, fill w20-music]
+- `public/sprites/petting.*`: body lean, happy, wag; face happy. [stub W2.0, fill w20-petting]
+- `public/sprites/fullscreen.*`: body hide, appear. [stub W2.0, fill w20-fullscreen]
+- `public/sprites/outfits.*`: seasonal outfits and body twirl. [stub W2.0, fill w20-mood-season]
+- `public/sprites/faces.*`: mood faces and body stretch, yawn. [stub W2.0, fill w20-mood-season]
 
 ## Dev tools (`scripts/dev/`)
 - `scripts/dev/emit-event.mjs`: inject a `FioreEvent` into the running dev app.

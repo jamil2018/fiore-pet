@@ -52,6 +52,26 @@ Debug injection (debug builds only) is `emit_debug_event` plus a TCP listener on
 ### Engine
 Pure function, no I/O. Reactions are per-feature reducers registered in `reactions/index.ts`; the engine composes them by the priority stack in the spec (section 2). Time and randomness are inputs, so golden replay is deterministic.
 
+Feature rules stay engine-owned defaults. A reaction may add effects and contributions; it does not re-implement the rules below. W2.0 tasks must not move this logic out of `engine.ts`.
+
+| Rule | Feature | Same-feature effects suppress it |
+|---|---|---|
+| world fold, one-shot queue, priority resolver | engine | no |
+| hide/appear and the hidden tier | fullscreen | no |
+| petting phases (hover, stroke, happy, afterglow) | petting | no |
+| `wag` | petting | yes |
+| activity body and prop | activity | no |
+| dance, headbob, headphones, 3 s bubble | music | no |
+| `notice`, `jump` | music | yes |
+| mood face and speed | mood | no |
+| `stretch`, `yawn` | mood | yes |
+| outfit and `summer_glasses` | season | no |
+| `twirl` | season | yes |
+
+- **Rule A.** A reaction's effects suppress only the default one-shots of the same feature, for that event or tick. Hide and appear are queued by the engine and are outside that set.
+- **Rule B.** Reaction contributions are applied after the engine's, so a reaction wins a tie at the same tier.
+- **Rule C.** Each reaction reads `ctx.rng`, a mulberry32 stream seeded once from `config.rng` in registry order. One feature's draws do not change another's sequence, or the engine's `jump` and `yawn` rolls. `Resolution.facing` defaults to `right` and `Resolution.overlayLevel` defaults to `0`; both use the same tier rank as the other fields.
+
 ### Sprites
 Atlas per group: `public/sprites/<group>.png` + `.json`; loader merges at startup. All layers share the 32x32 grid and anchor. Reference: `docs/reference/sprite-atlas.md`.
 
@@ -62,6 +82,15 @@ Atlas per group: `public/sprites/<group>.png` + `.json`; loader merges at startu
 - **Channel:** `std::sync::mpsc` (sensors -> hub). Hub emits on its own thread via the Tauri `AppHandle`.
 - **Polling:** foreground 500 ms; fullscreen <= 500 ms (or notification-driven); audio peak ~15 Hz and only while music is playing; clock 60 s plus a midnight check. Sleeping threads use `recv_timeout`/`park_timeout` so shutdown is prompt.
 - Frontend is single-threaded; the engine runs synchronously per event/tick.
+
+W2.0 sensor tasks share the rules below. Hemisphere and the fake clock are specified in `docs/fiore-mvp-spec.md` (section 3.5).
+
+1. **Baseline.** Each sensor reports its current state immediately at start, without waiting for its debounce or hold. The hub turns that first report into `state.snapshot`.
+2. **Music playing flag.** `pub(super) static MUSIC_PLAYING: AtomicBool` lives in `media.rs`. `audio_peak.rs` reads it. `mod.rs` constructors stay unit structs.
+3. **Category rules.** `app-categories.json` is embedded with `include_str!` and parsed at start. `tauri.conf.json` is not changed.
+4. **Hemisphere.** `FIORE_HEMISPHERE=south` flips the seasons; anything else, or unset, means north.
+5. **Fake clock.** `FIORE_FAKE_CLOCK` (`%Y-%m-%dT%H:%M:%S`) sets the starting time, and the clock advances in real time from there. An invalid value logs a `warn` and the system clock is used.
+6. **Music detection.** "Is music playing" means any GSMTC session in `GetSessions()` is `Playing`.
 
 ## Window model
 - One transparent, frameless, always-on-top window, skip-taskbar, not resizable, sized to the pet (96x96 plus bubble margin).

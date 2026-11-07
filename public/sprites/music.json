@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "group": "music",
+  "frame": {
+    "w": 32,
+    "h": 32
+  },
+  "sheets": [
+    {
+      "layer": "body",
+      "image": "base.png",
+      "animations": {
+        "dance": {
+          "row": 4,
+          "start": 0,
+          "count": 4,
+          "fps": 8,
+          "loop": true,
+          "headOffset": [
+            [
+              -2,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              2,
+              -1
+            ],
+            [
+              0,
+              -2
+            ]
+          ]
+        },
+        "headbob": {
+          "row": 5,
+          "start": 0,
+          "count": 4,
+          "fps": 8,
+          "loop": true,
+          "headOffset": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              -2
+            ],
+            [
+              0,
+              -1
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "layer": "accessory",
+      "image": "base.png",
+      "variant": "headphones",
+      "animations": {
+        "*": {
+          "row": 17,
+          "start": 0,
+          "count": 1,
+          "fps": 1,
+          "loop": true
+        }
+      }
+    }
+  ]
+}

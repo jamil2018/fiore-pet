@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "group": "fullscreen",
+  "frame": {
+    "w": 32,
+    "h": 32
+  },
+  "sheets": [
+    {
+      "layer": "body",
+      "image": "base.png",
+      "animations": {
+        "hide": {
+          "row": 10,
+          "start": 0,
+          "count": 4,
+          "fps": 8,
+          "loop": false,
+          "headOffset": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              8
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "appear": {
+          "row": 11,
+          "start": 0,
+          "count": 4,
+          "fps": 8,
+          "loop": false,
+          "headOffset": [
+            [
+              0,
+              8
+            ],
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}

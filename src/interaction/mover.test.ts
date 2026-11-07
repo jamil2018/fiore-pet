@@ -18,6 +18,8 @@ function resolution(move: Resolution['move']): Resolution {
     bubble: null,
     visible: true,
     move,
+    facing: 'right',
+    overlayLevel: 0,
   };
 }
 

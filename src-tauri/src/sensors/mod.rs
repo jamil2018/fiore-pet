@@ -3,6 +3,8 @@ mod clock;
 mod foreground;
 mod fullscreen;
 mod media;
+#[cfg(windows)]
+mod win;
 
 use std::sync::mpsc::Sender;
 

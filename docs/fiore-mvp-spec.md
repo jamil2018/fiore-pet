@@ -1,7 +1,7 @@
 # Fiore MVP spec
 
 Purpose: single source of truth for MVP scope, the event catalog, behavior priority and acceptance criteria.
-last-verified: 2026-11-07
+last-verified: 2026-11-08
 
 Nothing outside the event catalog triggers behavior. `docs-check` keeps the catalog table (section 3) in sync with the `FioreEvent` enum: every variant appears here, and every event here is a variant. Event names are `dot.case`; payload field names are camelCase on the wire.
 
@@ -104,6 +104,7 @@ Payload types: `Category = coding | writing | browsing | other`; `Mood = energet
 - `season.changed`: checked at startup and at midnight; northern hemisphere by default (config flag flips it). First outfit change plays `twirl`.
   - `winter` Dec-Feb: scarf and beanie. `spring` Mar-May: flower crown. `summer` Jun-Aug: sunglasses and straw hat (glasses only while coding). `autumn` Sep-Nov: hoodie with leaf.
 - A debug clock (env var `FIORE_FAKE_CLOCK`, ISO local time) overrides the system time so every mood and season is reachable.
+- **Env:** `FIORE_HEMISPHERE=south` flips the seasons (any other value, or unset, is north). `FIORE_FAKE_CLOCK` is a local `%Y-%m-%dT%H:%M:%S` start time that then advances in real time; an invalid value logs a warning and the system clock is used.
 - **AC-MS-1:** boundary hours map exactly (04:59 sleepy, 05:00 energetic, 10:59 energetic, 11:00 content, 17:00 calm, 21:00 sleepy).
 - **AC-MS-2:** month boundaries map exactly (Nov 30 autumn, Dec 1 winter, Feb 28/29 winter, Mar 1 spring, Aug 31 summer, Sep 1 autumn); hemisphere flag flips them.
 - **AC-MS-3:** mood never changes the body animation, only face and speed multiplier.

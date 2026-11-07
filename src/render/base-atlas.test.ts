@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ACCESSORIES, FACES, ONE_SHOTS, OUTFITS } from '../behavior/types';
 import { createAnimator } from './animator';
-import { mergeAtlases, parseAtlas, rememberSprite, validateImage } from './atlas';
+import { mergeAtlases, parseAtlas, rememberSprite, SPRITE_GROUPS, validateImage } from './atlas';
 
 const sprites = join(dirname(fileURLToPath(import.meta.url)), '../../public/sprites');
 
@@ -65,15 +65,26 @@ function cell(pixels: Uint8Array, width: number, col: number, row: number): Buff
 
 describe('base atlas', () => {
   const png = readFileSync(join(sprites, 'base.png'));
-  const json: unknown = JSON.parse(readFileSync(join(sprites, 'base.json'), 'utf8'));
   const image = readRgba(png);
-  const file = parseAtlas(json, 'base');
+  const files = SPRITE_GROUPS.map((group) => {
+    const json: unknown = JSON.parse(readFileSync(join(sprites, `${group}.json`), 'utf8'));
+    return parseAtlas(json, group);
+  });
+  const merged = mergeAtlases(files);
 
-  it('matches the 32px grid and keeps overlay placeholders on the same sheet', () => {
+  it('matches the 32px grid and keeps the pre-split key set without collisions', () => {
     expect(image.width % 32).toBe(0);
     expect(image.height % 32).toBe(0);
-    for (const sheet of file.sheets) validateImage(sheet, image);
-    const merged = mergeAtlases([file]);
+    for (const file of files) {
+      for (const sheet of file.sheets) {
+        expect(sheet.image).toBe('base.png');
+        validateImage(sheet, image);
+      }
+    }
+    const baseOnly = mergeAtlases(files.filter((file) => file.group === 'base'));
+    for (const name of ['hide', 'appear', 'lean', 'dance', 'stretch', 'twirl']) {
+      expect(baseOnly.lookup('body', undefined, name)).toBeNull();
+    }
     for (const name of BODY) {
       const def = merged.lookup('body', undefined, name);
       expect(def, name).toBeTruthy();
@@ -102,7 +113,6 @@ describe('base atlas', () => {
     expect(opaque).toBeGreaterThan(100);
     const idle = cell(image.pixels, image.width, 0, 0);
     expect(idle.some((value) => value !== 0)).toBe(true);
-    const merged = mergeAtlases([file]);
     for (const name of BODY) {
       if (!(ONE_SHOTS as readonly string[]).includes(name)) continue;
       const def = merged.body(name);
@@ -145,7 +155,7 @@ describe('base atlas', () => {
         };
       },
     };
-    createAnimator(canvas as unknown as HTMLCanvasElement, mergeAtlases([file])).render(
+    createAnimator(canvas as unknown as HTMLCanvasElement, merged).render(
       {
         body: 'idle',
         face: 'content',
@@ -156,6 +166,8 @@ describe('base atlas', () => {
         bubble: null,
         visible: true,
         move: 'stay',
+        facing: 'right',
+        overlayLevel: 0,
       },
       0,
     );

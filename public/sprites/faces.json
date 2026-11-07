@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "group": "faces",
+  "frame": {
+    "w": 32,
+    "h": 32
+  },
+  "sheets": [
+    {
+      "layer": "body",
+      "image": "base.png",
+      "animations": {
+        "stretch": {
+          "row": 12,
+          "start": 0,
+          "count": 4,
+          "fps": 6,
+          "loop": false,
+          "headOffset": [
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              -2
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "yawn": {
+          "row": 13,
+          "start": 0,
+          "count": 4,
+          "fps": 4,
+          "loop": false,
+          "headOffset": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "layer": "face",
+      "image": "base.png",
+      "variant": "energetic",
+      "animations": {
+        "*": {
+          "row": 15,
+          "start": 0,
+          "count": 1,
+          "fps": 1,
+          "loop": true
+        }
+      }
+    },
+    {
+      "layer": "face",
+      "image": "base.png",
+      "variant": "content",
+      "animations": {
+        "*": {
+          "row": 15,
+          "start": 1,
+          "count": 1,
+          "fps": 1,
+          "loop": true
+        }
+      }
+    },
+    {
+      "layer": "face",
+      "image": "base.png",
+      "variant": "calm",
+      "animations": {
+        "*": {
+          "row": 15,
+          "start": 2,
+          "count": 1,
+          "fps": 1,
+          "loop": true
+        }
+      }
+    },
+    {
+      "layer": "face",
+      "image": "base.png",
+      "variant": "sleepy",
+      "animations": {
+        "*": {
+          "row": 15,
+          "start": 3,
+          "count": 1,
+          "fps": 1,
+          "loop": true
+        }
+      }
+    }
+  ]
+}

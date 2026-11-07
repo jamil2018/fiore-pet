@@ -21,8 +21,8 @@ Format: `- [ ] <summary> (source: <run-id or "plan">, <date>)`. Every `TODO(back
 - [ ] Wander moves the window while the body stays `idle`; `walk` is never selected (`engine.ts`) (source: w11-judge, 2026-11-08)
 - [ ] "One stretch per day" is a rolling 24 hours, not a calendar day (`engine.ts`) (source: w11-judge, 2026-11-08)
 - [ ] Animator resets canvas CSS size and `image-rendering` on every render (`animator.ts`) (source: w11-judge, 2026-11-08)
-- [ ] W2.0 contract step: feature behavior (activity props, music dance/headbob, one-shot rules, speech bubble) is hard-coded in `engine.ts`, and any reaction effect for an event suppresses those defaults. Move that logic into `reactions/*.ts` or document engine-owned defaults in `docs/architecture.md` and the W2.0 packets. Do not refactor reactions before that step. (source: w11-judge, 2026-11-08)
 
 ## Done
+- [x] W2.0 contract step: engine-owned defaults are documented in `docs/architecture.md` (rules A–C). A reaction adds to those defaults and suppresses only its own feature's one-shots. (source: w11-judge, 2026-11-08)
 - [x] Codemap no longer describes a set-position command in `window.rs`; wander uses `bridge.window.setPosition` (source: w11-judge, 2026-11-08)
 - [x] Frontend calls `bridge.window.hide`/`show` when `resolution.visible` flips (source: w11-judge, 2026-11-08)

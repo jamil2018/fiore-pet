@@ -2,6 +2,7 @@ import { createEngine } from './behavior/engine';
 import type { Resolution, Rng } from './behavior/types';
 import { selectBridge } from './bridge';
 import { createMover } from './interaction/mover';
+import { createPettingDetector } from './interaction/petting';
 import { createAnimator } from './render/animator';
 import { browserImageLoader, loadAtlases, SPRITE_GROUPS } from './render/atlas';
 
@@ -71,6 +72,11 @@ async function main(): Promise<void> {
     const now = performance.now();
     present(engine.handle({ kind: 'tick', now }), now);
   }
+
+  createPettingDetector(canvas, (event) => {
+    const now = performance.now();
+    present(engine.handle({ kind: 'event', event, now }), now);
+  });
 
   await bridge.subscribe((event) => {
     const now = performance.now();

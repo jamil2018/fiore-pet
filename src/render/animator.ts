@@ -1,4 +1,4 @@
-import type { Animation, LayerName, Resolution } from '../behavior/types';
+import type { Animation, Facing, LayerName, Resolution } from '../behavior/types';
 import { type AnimationDef, type MergedAtlas, spriteSource } from './atlas';
 
 const FRAME = 32;
@@ -76,6 +76,7 @@ function paint(
   frame: number,
   shift: readonly [number, number],
   scale: number,
+  facing: Facing,
   missing: Set<string>,
 ): void {
   const name = def.image;
@@ -90,15 +91,20 @@ function paint(
   }
   const index = frame >= 0 && frame < def.count ? frame : 0;
   const size = FRAME * scale;
+  const left = shift[0] * scale;
+  const top = shift[1] * scale;
+  // Negative width mirrors the cell. `size - left` mirrors a positive headOffset x.
+  const destX = facing === 'left' ? size - left : left;
+  const destW = facing === 'left' ? -size : size;
   ctx.drawImage(
     image,
     (def.start + index) * FRAME,
     def.row * FRAME,
     FRAME,
     FRAME,
-    shift[0] * scale,
-    shift[1] * scale,
-    size,
+    destX,
+    top,
+    destW,
     size,
   );
 }
@@ -112,6 +118,7 @@ function paintOverlay(
   bodyFrame: number,
   head: readonly [number, number],
   scale: number,
+  facing: Facing,
   missing: Set<string>,
 ): void {
   const named = atlas.lookup(layer, variant, bodyAnim);
@@ -126,7 +133,7 @@ function paintOverlay(
     }
     return;
   }
-  paint(ctx, def, authored ? bodyFrame : 0, authored ? NO_SHIFT : head, scale, missing);
+  paint(ctx, def, authored ? bodyFrame : 0, authored ? NO_SHIFT : head, scale, facing, missing);
 }
 
 function variantFor(layer: (typeof DRAW_ORDER)[number], resolution: Resolution): string | null {
@@ -171,22 +178,36 @@ export function createAnimator(canvas: HTMLCanvasElement, atlas: MergedAtlas): A
       // headbob rides on top of the body animation: only its headOffset is applied,
       // so an activity pose is not replaced by a second body.
       if (resolution.overlay && resolution.overlay !== bodyAnim) {
-        overlayPlayback = track(overlayPlayback, resolution.overlay, now, resolution.speed);
+        const overlaySpeed = resolution.speed * (0.75 + 0.5 * resolution.overlayLevel);
+        overlayPlayback = track(overlayPlayback, resolution.overlay, now, overlaySpeed);
         const bob = atlas.body(resolution.overlay);
         const bobFrame = frameIndex(bob, overlayPlayback.elapsed, 1);
-        head = addShift(head, shiftOf(bob, bobFrame));
+        const bobShift = shiftOf(bob, bobFrame);
+        const bobY = resolution.overlayLevel >= 0.6 ? bobShift[1] * 2 : bobShift[1];
+        head = addShift(head, [bobShift[0], bobY]);
       } else {
         overlayPlayback = null;
       }
 
       for (const layer of DRAW_ORDER) {
         if (layer === 'body') {
-          paint(ctx, bodyDef, bodyFrame, NO_SHIFT, scale, missing);
+          paint(ctx, bodyDef, bodyFrame, NO_SHIFT, scale, resolution.facing, missing);
           continue;
         }
         const variant = variantFor(layer, resolution);
         if (!variant) continue;
-        paintOverlay(ctx, atlas, layer, variant, bodyAnim, bodyFrame, head, scale, missing);
+        paintOverlay(
+          ctx,
+          atlas,
+          layer,
+          variant,
+          bodyAnim,
+          bodyFrame,
+          head,
+          scale,
+          resolution.facing,
+          missing,
+        );
       }
     },
   };

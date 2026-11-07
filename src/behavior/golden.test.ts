@@ -24,10 +24,12 @@ const EXPECT_KEYS = [
   'outfit',
   'accessory',
   'overlay',
+  'overlayLevel',
   'speed',
   'bubble',
   'visible',
   'move',
+  'facing',
 ] as const;
 
 type ExpectKey = (typeof EXPECT_KEYS)[number];
@@ -77,10 +79,14 @@ function parseExpect(value: unknown, label: string): GoldenExpect {
     expectPart.accessory = value.accessory as Resolution['accessory'];
   }
   if (value.overlay !== undefined) expectPart.overlay = value.overlay as Resolution['overlay'];
+  if (value.overlayLevel !== undefined) {
+    expectPart.overlayLevel = value.overlayLevel as Resolution['overlayLevel'];
+  }
   if (value.speed !== undefined) expectPart.speed = value.speed as Resolution['speed'];
   if (value.bubble !== undefined) expectPart.bubble = value.bubble as Resolution['bubble'];
   if (value.visible !== undefined) expectPart.visible = value.visible as Resolution['visible'];
   if (value.move !== undefined) expectPart.move = value.move as Resolution['move'];
+  if (value.facing !== undefined) expectPart.facing = value.facing as Resolution['facing'];
   return expectPart;
 }
 
