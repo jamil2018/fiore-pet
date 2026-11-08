@@ -1,10 +1,13 @@
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{App, AppHandle, LogicalPosition, Manager, Runtime, WebviewWindow};
+
+mod autostart;
 
 pub const MAIN_LABEL: &str = "main";
 const SHOW_ID: &str = "show";
 const HIDE_ID: &str = "hide";
+const AUTOSTART_ID: &str = "autostart";
 const QUIT_ID: &str = "quit";
 
 /// Inset from the work-area edges when the pet is first placed, in logical pixels.
@@ -79,8 +82,30 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), WindowError> {
     if let Err(err) = place_window(&window) {
         tracing::warn!(error = %err, "initial window position skipped");
     }
-    install_tray(app)?;
+    let autostart_ready = register_autostart(app);
+    install_tray(app, autostart_ready)?;
     Ok(())
+}
+
+fn register_autostart<R: Runtime>(app: &mut App<R>) -> bool {
+    #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
+    {
+        match app.handle().plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        )) {
+            Ok(()) => true,
+            Err(err) => {
+                tracing::warn!(error = %err, "autostart plugin init failed");
+                false
+            }
+        }
+    }
+    #[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
+    {
+        let _ = app;
+        false
+    }
 }
 
 fn place_window<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), WindowError> {
@@ -123,31 +148,77 @@ fn logical_window_size(width: u32, height: u32, scale: f64) -> Result<(u32, u32)
     Ok((logical.width, logical.height))
 }
 
-fn install_tray<R: Runtime>(app: &App<R>) -> Result<(), WindowError> {
+fn install_tray<R: Runtime>(app: &App<R>, autostart_ready: bool) -> Result<(), WindowError> {
     let icon = app
         .default_window_icon()
         .cloned()
         .ok_or_else(|| WindowError::Setup("missing window icon".to_string()))?;
     let show = MenuItem::with_id(app, SHOW_ID, "Show", true, None::<&str>).map_err(to_setup)?;
     let hide = MenuItem::with_id(app, HIDE_ID, "Hide", true, None::<&str>).map_err(to_setup)?;
+    let autostart_checked = autostart_ready && autostart_is_enabled(app);
+    let autostart = CheckMenuItem::with_id(
+        app,
+        AUTOSTART_ID,
+        "Start with Windows",
+        autostart_ready,
+        autostart_checked,
+        None::<&str>,
+    )
+    .map_err(to_setup)?;
     let quit = MenuItem::with_id(app, QUIT_ID, "Quit", true, None::<&str>).map_err(to_setup)?;
-    let menu = Menu::with_items(app, &[&show, &hide, &quit]).map_err(to_setup)?;
+    let menu = Menu::with_items(app, &[&show, &hide, &autostart, &quit]).map_err(to_setup)?;
+    let autostart_item = autostart.clone();
     let tray = TrayIconBuilder::<R>::new()
         .icon(icon)
         .menu(&menu)
         .tooltip("Fiore")
         .show_menu_on_left_click(true)
-        .on_menu_event(|handle, event| match event.id.as_ref() {
+        .on_menu_event(move |handle, event| match event.id.as_ref() {
             SHOW_ID => report(show_main(handle)),
             HIDE_ID => report(hide_main(handle)),
+            AUTOSTART_ID => on_autostart_click(handle, &autostart_item),
             QUIT_ID => handle.exit(0),
             _ => {}
         })
         .build(app)
         .map_err(to_setup)?;
     // Dropping the last TrayIcon removes it from the system tray.
+    // CheckMenuItem is Clone (docs.rs tauri 2.12.5); the closure plus managed state keep it.
     app.manage(tray);
+    app.manage(autostart);
     Ok(())
+}
+
+fn autostart_is_enabled<R: Runtime>(app: &App<R>) -> bool {
+    #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
+    {
+        autostart::checked_app(app.handle())
+    }
+    #[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
+    {
+        let _ = app;
+        false
+    }
+}
+
+fn on_autostart_click<R: Runtime>(handle: &AppHandle<R>, item: &CheckMenuItem<R>) {
+    #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
+    {
+        let actual = match autostart::toggle_app(handle) {
+            Ok(enabled) => enabled,
+            Err(err) => {
+                tracing::warn!(error = %err, "autostart toggle failed");
+                autostart::checked_app(handle)
+            }
+        };
+        if let Err(err) = item.set_checked(actual) {
+            tracing::warn!(error = %err, "autostart check sync failed");
+        }
+    }
+    #[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
+    {
+        let _ = (handle, item);
+    }
 }
 
 fn main_window<R: Runtime>(app: &AppHandle<R>) -> Result<WebviewWindow<R>, WindowError> {
