@@ -2,6 +2,8 @@ mod audio_peak;
 mod clock;
 mod foreground;
 mod fullscreen;
+#[cfg(target_os = "macos")]
+pub(crate) mod macos;
 mod media;
 #[cfg(windows)]
 mod win;

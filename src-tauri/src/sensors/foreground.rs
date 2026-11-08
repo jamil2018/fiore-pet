@@ -135,7 +135,7 @@ struct Reading {
 }
 
 trait ForegroundSource {
-    fn poll(&self) -> Option<Reading>;
+    fn poll(&self) -> Result<Option<Reading>, SensorError>;
 }
 
 /// A null window or our own process is not a sample, so the pending category stays.
@@ -165,8 +165,8 @@ fn step(
     rules: &Rules,
     hold: &mut HoldDebounce,
     now_ms: u64,
-) -> Option<FioreEvent> {
-    on_reading(source.poll().as_ref(), rules, hold, now_ms)
+) -> Result<Option<FioreEvent>, SensorError> {
+    Ok(on_reading(source.poll()?.as_ref(), rules, hold, now_ms))
 }
 
 fn monotonic_ms(started: Instant) -> u64 {
@@ -199,7 +199,7 @@ fn poll_forever(
     let mut hold = HoldDebounce::default();
     loop {
         let now_ms = monotonic_ms(started);
-        if let Some(event) = step(source, rules, &mut hold, now_ms) {
+        if let Some(event) = step(source, rules, &mut hold, now_ms)? {
             log_category(&event);
             if tx.send(event).is_err() {
                 return Ok(());
@@ -214,14 +214,70 @@ struct WinForeground;
 
 #[cfg(windows)]
 impl ForegroundSource for WinForeground {
-    fn poll(&self) -> Option<Reading> {
-        let window = crate::sensors::win::foreground()?;
-        Some(Reading {
+    fn poll(&self) -> Result<Option<Reading>, SensorError> {
+        let Some(window) = crate::sensors::win::foreground() else {
+            return Ok(None);
+        };
+        Ok(Some(Reading {
             own_process: crate::sensors::win::is_own_pid(window.pid),
             exe_name: window.exe_name,
             title: window.title,
-        })
+        }))
     }
+}
+
+#[cfg(any(target_os = "macos", test))]
+#[derive(Debug, Deserialize)]
+pub(super) struct MacDesktop {
+    pub status: String,
+    pub pid: Option<u32>,
+    pub bundle_id: Option<String>,
+    pub title: Option<String>,
+    #[serde(default)]
+    pub is_self: bool,
+    pub fullscreen: Option<bool>,
+    pub window: Option<super::fullscreen::MacRect>,
+    pub display: Option<super::fullscreen::MacRect>,
+}
+
+#[cfg(any(target_os = "macos", test))]
+impl MacDesktop {
+    fn reading(self) -> Result<Option<Reading>, SensorError> {
+        match self.status.as_str() {
+            "unavailable" | "denied" => Ok(None),
+            "ok" if self.pid.is_none() => Ok(None),
+            "ok" => Ok(Some(Reading {
+                exe_name: self.bundle_id,
+                title: self.title.unwrap_or_default(),
+                own_process: self.is_self,
+            })),
+            _ => Err(SensorError::Failed("macOS desktop bridge failed".into())),
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub(super) fn mac_snapshot() -> Result<MacDesktop, SensorError> {
+    unsafe extern "C" {
+        fn fiore_macos_desktop_snapshot() -> *mut std::ffi::c_char;
+    }
+    // SAFETY: native bridge returns NULL or a malloc-owned NUL-terminated UTF-8 string.
+    super::macos::snapshot(unsafe { fiore_macos_desktop_snapshot() })
+}
+
+#[cfg(target_os = "macos")]
+struct MacForeground;
+
+#[cfg(target_os = "macos")]
+impl ForegroundSource for MacForeground {
+    fn poll(&self) -> Result<Option<Reading>, SensorError> {
+        mac_snapshot()?.reading()
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn platform_start(rules: &Rules, tx: Sender<FioreEvent>) -> Result<(), SensorError> {
+    poll_forever(&MacForeground, rules, &tx)
 }
 
 pub struct ForegroundSensor;
@@ -242,7 +298,7 @@ fn platform_start(rules: &Rules, tx: Sender<FioreEvent>) -> Result<(), SensorErr
     poll_forever(&WinForeground, rules, &tx)
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 fn platform_start(rules: &Rules, tx: Sender<FioreEvent>) -> Result<(), SensorError> {
     let _ = (rules, tx);
     Ok(())
@@ -262,8 +318,8 @@ mod tests {
     }
 
     impl ForegroundSource for FakeSource {
-        fn poll(&self) -> Option<Reading> {
-            self.reading.borrow().clone()
+        fn poll(&self) -> Result<Option<Reading>, SensorError> {
+            Ok(self.reading.borrow().clone())
         }
     }
 
@@ -483,27 +539,27 @@ mod tests {
             reading: RefCell::new(Some(sample(Some("chrome.exe"), "News", true))),
         };
         let mut hold = HoldDebounce::default();
-        assert!(step(&source, &parsed, &mut hold, 0).is_none());
+        assert!(step(&source, &parsed, &mut hold, 0).unwrap().is_none());
         source
             .reading
             .replace(Some(sample(Some("fiore.exe"), "Fiore", true)));
-        assert!(step(&source, &parsed, &mut hold, 5_000).is_none());
+        assert!(step(&source, &parsed, &mut hold, 5_000).unwrap().is_none());
 
         source
             .reading
             .replace(Some(sample(Some("chrome.exe"), "News", false)));
-        let baseline = step(&source, &parsed, &mut hold, 5_500).unwrap();
+        let baseline = step(&source, &parsed, &mut hold, 5_500).unwrap().unwrap();
         assert_eq!(changed(&baseline).0, Category::Browsing);
 
         source
             .reading
             .replace(Some(sample(Some("Code.exe"), "main", true)));
-        assert!(step(&source, &parsed, &mut hold, 6_000).is_none());
-        assert!(step(&source, &parsed, &mut hold, 9_000).is_none());
+        assert!(step(&source, &parsed, &mut hold, 6_000).unwrap().is_none());
+        assert!(step(&source, &parsed, &mut hold, 9_000).unwrap().is_none());
         source
             .reading
             .replace(Some(sample(Some("chrome.exe"), "News", false)));
-        assert!(step(&source, &parsed, &mut hold, 9_000).is_none());
+        assert!(step(&source, &parsed, &mut hold, 9_000).unwrap().is_none());
     }
 
     #[test]
@@ -528,5 +584,57 @@ mod tests {
     fn foreground_poll_is_500_ms() {
         assert_eq!(POLL, Duration::from_millis(500));
         assert_eq!(HOLD_MS, 1_500);
+    }
+
+    #[test]
+    fn mac_bundle_rules_and_permission_limited_titles() {
+        let rules = rules();
+        for (bundle, expected) in [
+            ("com.microsoft.VSCode", Category::Coding),
+            ("com.apple.dt.Xcode", Category::Coding),
+            ("com.apple.TextEdit", Category::Writing),
+            ("com.apple.Safari", Category::Browsing),
+            ("com.google.Chrome", Category::Browsing),
+            ("unknown.app", Category::Other),
+        ] {
+            assert_eq!(classify(Some(bundle), "", &rules), expected);
+        }
+        assert_eq!(
+            classify(Some("com.apple.Safari"), "Report - Google Docs", &rules),
+            Category::Writing
+        );
+        let snapshot: MacDesktop = serde_json::from_str(r#"{"status":"ok","pid":42,"bundle_id":"com.apple.Safari","title":null,"is_self":false}"#).unwrap();
+        let reading = snapshot.reading().unwrap().unwrap();
+        assert_eq!(reading.title, "");
+        assert_eq!(
+            classify(reading.exe_name.as_deref(), &reading.title, &rules),
+            Category::Browsing
+        );
+    }
+
+    #[test]
+    fn mac_unknown_and_errors_do_not_become_activity() {
+        for json in [
+            r#"{"status":"unavailable"}"#,
+            r#"{"status":"denied"}"#,
+            r#"{"status":"ok","pid":null}"#,
+        ] {
+            let snapshot: MacDesktop = serde_json::from_str(json).unwrap();
+            assert!(snapshot.reading().unwrap().is_none());
+        }
+        let failure: MacDesktop = serde_json::from_str(r#"{"status":"error"}"#).unwrap();
+        assert!(failure.reading().is_err());
+        assert!(serde_json::from_str::<MacDesktop>(r#"{"status":"ok","pid":"bad"}"#).is_err());
+        let own: MacDesktop = serde_json::from_str(
+            r#"{"status":"ok","pid":42,"bundle_id":"com.apple.Safari","is_self":true}"#,
+        )
+        .unwrap();
+        assert!(on_reading(
+            own.reading().unwrap().as_ref(),
+            &rules(),
+            &mut HoldDebounce::default(),
+            0
+        )
+        .is_none());
     }
 }

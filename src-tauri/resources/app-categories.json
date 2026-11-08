@@ -6,9 +6,43 @@
     "idea64.exe",
     "pycharm64.exe",
     "sublime_text.exe",
-    "WindowsTerminal.exe"
+    "WindowsTerminal.exe",
+    "com.microsoft.VSCode",
+    "com.todesktop.230313mzl4w4u92",
+    "com.apple.dt.Xcode",
+    "com.jetbrains.intellij",
+    "com.jetbrains.pycharm",
+    "com.sublimetext.4",
+    "com.apple.Terminal",
+    "com.googlecode.iterm2"
   ],
-  "writing": ["notepad.exe", "notepad++.exe", "WINWORD.EXE", "Obsidian.exe", "Notion.exe"],
-  "browsing": ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe"],
-  "writingTitleKeywords": ["Google Docs", "Notion", "Word"]
+  "writing": [
+    "notepad.exe",
+    "notepad++.exe",
+    "WINWORD.EXE",
+    "Obsidian.exe",
+    "Notion.exe",
+    "com.apple.TextEdit",
+    "com.microsoft.Word",
+    "md.obsidian",
+    "notion.id"
+  ],
+  "browsing": [
+    "chrome.exe",
+    "msedge.exe",
+    "firefox.exe",
+    "brave.exe",
+    "opera.exe",
+    "com.apple.Safari",
+    "com.google.Chrome",
+    "org.mozilla.firefox",
+    "com.microsoft.edgemac",
+    "com.brave.Browser",
+    "com.operasoftware.Opera"
+  ],
+  "writingTitleKeywords": [
+    "Google Docs",
+    "Notion",
+    "Word"
+  ]
 }

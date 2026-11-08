@@ -1,0 +1,68 @@
+name: macOS sensors
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/macos-sensors, main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy --component rustfmt
+          rustup default stable
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: npm ci --no-audit --no-fund
+      - name: Native and frontend checks
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml --check
+          cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+          cargo test --locked --manifest-path src-tauri/Cargo.toml
+          npm test
+          npm run build
+          node scripts/harness/docs-check.mjs
+      - name: Build universal development app
+        run: npm run tauri -- build --target universal-apple-darwin --bundles app,dmg
+      - name: Verify bundle and archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle=src-tauri/target/universal-apple-darwin/release/bundle
+          app="$bundle/macos/Fiore.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -d --entitlements :- "$app" > entitlements.plist
+          /usr/libexec/PlistBuddy -c 'Print :com.apple.security.automation.apple-events' entitlements.plist | grep true
+          /usr/libexec/PlistBuddy -c 'Print :NSAppleEventsUsageDescription' "$app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :NSAudioCaptureUsageDescription' "$app/Contents/Info.plist"
+          archs=$(lipo -archs "$app/Contents/MacOS/fiore")
+          [[ " $archs " == *" arm64 "* && " $archs " == *" x86_64 "* ]]
+          mkdir -p macos-artifacts
+          ditto -c -k --sequesterRsrc --keepParent "$app" macos-artifacts/Fiore_macos-sensors_universal.zip
+          cp "$bundle"/dmg/*.dmg macos-artifacts/Fiore_macos-sensors_universal.dmg
+          printf '%s\n' "$GITHUB_SHA" > macos-artifacts/SOURCE_SHA.txt
+          (cd macos-artifacts && shasum -a 256 ./*.zip ./*.dmg SOURCE_SHA.txt > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fiore-macos-sensors-${{ github.sha }}
+          path: macos-artifacts/
+          if-no-files-found: error

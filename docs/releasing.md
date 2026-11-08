@@ -9,6 +9,8 @@ Windows 10/11 x64 is the full product. The portable ZIP contains `fiore.exe` and
 
 macOS is an experimental universal preview for Apple Silicon and Intel. It supports rendering, dragging, petting, clock moods, seasonal outfits and tray controls. Activity, media playback, audio-level and fullscreen sensors are Windows-only and unavailable in this preview. The tray's **Start at login** uses a LaunchAgent and is off by default. Disable it before deleting the app. Copy `Fiore.app` from the DMG or extracted ZIP into Applications before enabling it.
 
+That limitation describes the published v0.2.0 binaries. Development builds add the Mac sensors described in [the sensor setup and verification guide](reference/macos-sensors.md). [Mac sensor CI](../.github/workflows/macos.yml) builds a separate universal development app and DMG with source SHA/checksums; it never replaces published release assets. Use a recent Xcode SDK with Core Audio tap declarations when building this branch.
+
 Windows binaries are unsigned. The Mac app is ad-hoc signed (`signingIdentity: "-"`) and not notarized; Gatekeeper may block it. For a build you trust, review macOS Privacy & Security's Open Anyway option. This is not a Developer ID distribution. No signing credentials or API keys are required by the workflow. A native Mac smoke check remains required before calling the preview runtime verified.
 
 ## Local builds

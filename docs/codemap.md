@@ -21,6 +21,14 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src-tauri/src/window/autostart.rs`: tray "Start with Windows" toggle (`tauri-plugin-autostart`).
 - `src-tauri/src/sensors/mod.rs`: `Sensor` trait and registration of all 5 sensors. Contract file.
 - `src-tauri/src/sensors/win.rs`: shared Win32 helpers (`WinRtGuard`, `ComGuard`, `foreground`, `is_own_pid`). Contract file. `#[cfg(windows)]`.
+- `src-tauri/src/sensors/macos.rs`: native snapshot ownership and explicit tray permission controls; macOS only.
+- `src-tauri/native/macos/fiore_macos.h`: shared native sensor ABI and allocation contract.
+- `src-tauri/native/macos/common.m`: native allocation cleanup and permission feedback.
+- `src-tauri/native/macos/desktop.m`: front app identity, optional AX title and onscreen geometry.
+- `src-tauri/native/macos/media.m`: authorized Music/Spotify read-only playback metadata.
+- `src-tauri/native/macos/audio.m`: opt-in Core Audio output peak tap and lifecycle.
+- `src-tauri/build.rs`: platform-native bridge compilation and Tauri build setup.
+- `src-tauri/Info.plist`, `src-tauri/Entitlements.plist`: Mac permission descriptions and Apple Events entitlement.
 - `src-tauri/src/sensors/media.rs`: GSMTC session -> `music.started`, `music.track_changed`, `music.stopped` (2 s stop debounce).
 - `src-tauri/src/sensors/audio_peak.rs`: `IAudioMeterInformation` peak -> `music.level` at ~15 Hz while playing.
 - `src-tauri/src/sensors/foreground.rs`: 500 ms foreground poll, classifier, 1.5 s hold -> `app.category_changed`.
@@ -74,5 +82,6 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 
 ## Config (repo root)
 - `.github/workflows/release.yml`: Windows and macOS universal artifact builds, provenance and checksums; publication procedure lives in `docs/releasing.md`.
+- `.github/workflows/macos.yml`: native sensor tests and universal development artifacts; no release publication.
 - `package.json`, `vite.config.ts`, `tsconfig.json`, `biome.json`, `rustfmt.toml`: tooling configs (`dev`, `dev:mock`, `test`, `build` scripts).
 - `index.html`: Vite entry page, canvas mount.

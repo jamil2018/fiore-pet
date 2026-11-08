@@ -171,6 +171,52 @@ fn install_tray<R: Runtime>(app: &App<R>, autostart_ready: bool) -> Result<(), W
     .map_err(to_setup)?;
     let quit = MenuItem::with_id(app, QUIT_ID, "Quit", true, None::<&str>).map_err(to_setup)?;
     let menu = Menu::with_items(app, &[&show, &hide, &autostart, &quit]).map_err(to_setup)?;
+    #[cfg(target_os = "macos")]
+    let audio_item = {
+        use crate::sensors::macos;
+        let titles = MenuItem::with_id(
+            app,
+            "mac_titles",
+            "Allow window title detection…",
+            true,
+            None::<&str>,
+        )
+        .map_err(to_setup)?;
+        let music = MenuItem::with_id(
+            app,
+            "mac_music",
+            "Allow Apple Music reactions…",
+            true,
+            None::<&str>,
+        )
+        .map_err(to_setup)?;
+        let spotify = MenuItem::with_id(
+            app,
+            "mac_spotify",
+            "Allow Spotify reactions…",
+            true,
+            None::<&str>,
+        )
+        .map_err(to_setup)?;
+        let audio = CheckMenuItem::with_id(
+            app,
+            "mac_audio",
+            "Audio volume reactions (macOS 14.2+)",
+            macos::audio_supported(),
+            macos::audio_enabled(),
+            None::<&str>,
+        )
+        .map_err(to_setup)?;
+        let permissions = tauri::menu::Submenu::with_items(
+            app,
+            "Reactions & permissions",
+            true,
+            &[&titles, &music, &spotify, &audio],
+        )
+        .map_err(to_setup)?;
+        menu.insert(&permissions, 3).map_err(to_setup)?;
+        audio
+    };
     let autostart_item = autostart.clone();
     let tray = TrayIconBuilder::<R>::new()
         .icon(icon)
@@ -181,6 +227,19 @@ fn install_tray<R: Runtime>(app: &App<R>, autostart_ready: bool) -> Result<(), W
             SHOW_ID => report(show_main(handle)),
             HIDE_ID => report(hide_main(handle)),
             AUTOSTART_ID => on_autostart_click(handle, &autostart_item),
+            #[cfg(target_os = "macos")]
+            "mac_titles" => crate::sensors::macos::request_accessibility(),
+            #[cfg(target_os = "macos")]
+            "mac_music" => crate::sensors::macos::request_media(0),
+            #[cfg(target_os = "macos")]
+            "mac_spotify" => crate::sensors::macos::request_media(1),
+            #[cfg(target_os = "macos")]
+            "mac_audio" => {
+                let enabled = crate::sensors::macos::toggle_audio();
+                if let Err(error) = audio_item.set_checked(enabled) {
+                    tracing::warn!(%error, "audio menu sync failed");
+                }
+            }
             QUIT_ID => handle.exit(0),
             _ => {}
         })

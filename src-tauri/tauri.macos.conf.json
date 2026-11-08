@@ -4,7 +4,9 @@
     "targets": ["app", "dmg"],
     "shortDescription": "An experimental pixel-art desktop pet for macOS",
     "macOS": {
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "minimumSystemVersion": "10.15",
+      "entitlements": "Entitlements.plist"
     }
   }
 }

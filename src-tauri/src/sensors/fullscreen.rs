@@ -31,6 +31,7 @@ const POLL_INTERVAL: Duration = Duration::from_millis(500);
 
 /// The seven `QUNS_*` values. Only three of them block notifications.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg(any(windows, test))]
 pub enum ShellState {
     NotPresent,
     Busy,
@@ -43,9 +44,11 @@ pub enum ShellState {
 
 /// `SHQueryUserNotificationState` failed. The previous fullscreen bit stays.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg(any(windows, test))]
 pub struct ShellMiss;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg(any(windows, test))]
 pub struct Rect {
     pub left: i32,
     pub top: i32,
@@ -54,6 +57,7 @@ pub struct Rect {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg(any(windows, test))]
 pub struct WindowSample {
     pub class: String,
     pub pid: u32,
@@ -62,12 +66,14 @@ pub struct WindowSample {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg(any(windows, test))]
 pub struct Sample {
     pub shell: Result<ShellState, ShellMiss>,
     pub window: Option<WindowSample>,
 }
 
 /// One sample of the shell and the current foreground window. Handles are not cached.
+#[cfg(any(windows, test))]
 pub trait FullscreenSource {
     fn sample(&self) -> Sample;
 }
@@ -97,6 +103,7 @@ impl Edge {
     }
 }
 
+#[cfg(any(windows, test))]
 pub fn shell_blocks(state: ShellState) -> bool {
     matches!(
         state,
@@ -106,6 +113,7 @@ pub fn shell_blocks(state: ShellState) -> bool {
 
 /// Containment against `rcMonitor`, including equal edges. Invisible borders make a
 /// covering window larger than the monitor, so equality alone would miss it.
+#[cfg(any(windows, test))]
 pub fn covers(window: Rect, monitor: Rect) -> bool {
     window.left <= monitor.left
         && window.top <= monitor.top
@@ -113,12 +121,14 @@ pub fn covers(window: Rect, monitor: Rect) -> bool {
         && window.bottom >= monitor.bottom
 }
 
+#[cfg(any(windows, test))]
 pub fn excluded(class: &str, pid: u32, own: u32) -> bool {
     pid == own || matches!(class, "Progman" | "WorkerW" | "Shell_TrayWnd")
 }
 
 /// Shell block wins on its own. Exclusion applies only to the rect check, so presentation
 /// mode still hides the pet while the desktop window is in front.
+#[cfg(any(windows, test))]
 pub fn decide(shell: ShellState, window: Option<&WindowSample>, own_pid: u32) -> bool {
     if shell_blocks(shell) {
         return true;
@@ -132,6 +142,7 @@ pub fn decide(shell: ShellState, window: Option<&WindowSample>, own_pid: u32) ->
     covers(window.window, window.monitor)
 }
 
+#[cfg(any(windows, test))]
 pub fn step(
     edge: &mut Edge,
     shell: Result<ShellState, ShellMiss>,
@@ -143,6 +154,96 @@ pub fn step(
         Err(ShellMiss) => None,
     };
     edge.observe(fullscreen)
+}
+
+#[cfg(any(target_os = "macos", test))]
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
+pub(super) struct MacRect {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+#[cfg(any(target_os = "macos", test))]
+impl MacRect {
+    fn valid(self) -> bool {
+        [
+            self.x,
+            self.y,
+            self.width,
+            self.height,
+            self.x + self.width,
+            self.y + self.height,
+        ]
+        .iter()
+        .all(|n| n.is_finite())
+            && self.width > 0.0
+            && self.height > 0.0
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn mac_fullscreen(sample: &super::foreground::MacDesktop) -> Result<Option<bool>, SensorError> {
+    match sample.status.as_str() {
+        "unavailable" | "denied" => return Ok(None),
+        "ok" => {}
+        _ => return Err(SensorError::Failed("macOS desktop bridge failed".into())),
+    }
+    if sample.is_self || sample.pid.is_none() {
+        return Ok(None);
+    }
+    if sample.fullscreen == Some(true) {
+        return Ok(Some(true));
+    }
+    let (Some(window), Some(display)) = (sample.window, sample.display) else {
+        return Ok(sample.fullscreen);
+    };
+    if !window.valid() || !display.valid() {
+        return Ok(None);
+    }
+    let intersects = window.x < display.x + display.width
+        && window.x + window.width > display.x
+        && window.y < display.y + display.height
+        && window.y + window.height > display.y;
+    if !intersects {
+        return Ok(None);
+    }
+    Ok(Some(
+        window.x <= display.x
+            && window.y <= display.y
+            && window.x + window.width >= display.x + display.width
+            && window.y + window.height >= display.y + display.height,
+    ))
+}
+
+#[cfg(target_os = "macos")]
+trait MacFullscreenSource {
+    fn fullscreen(&self) -> Result<Option<bool>, SensorError>;
+}
+
+#[cfg(target_os = "macos")]
+struct MacFullscreen;
+
+#[cfg(target_os = "macos")]
+impl MacFullscreenSource for MacFullscreen {
+    fn fullscreen(&self) -> Result<Option<bool>, SensorError> {
+        mac_fullscreen(&super::foreground::mac_snapshot()?)
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn start_macos(tx: std::sync::mpsc::Sender<FioreEvent>) -> Result<(), SensorError> {
+    let source = MacFullscreen;
+    let mut edge = Edge::new();
+    loop {
+        if let Some(event) = edge.observe(source.fullscreen()?) {
+            if tx.send(event).is_err() {
+                return Ok(());
+            }
+        }
+        thread::park_timeout(POLL_INTERVAL);
+    }
 }
 
 pub struct FullscreenSensor;
@@ -157,7 +258,11 @@ impl Sensor for FullscreenSensor {
         {
             start_windows(tx)
         }
-        #[cfg(not(windows))]
+        #[cfg(target_os = "macos")]
+        {
+            start_macos(tx)
+        }
+        #[cfg(not(any(windows, target_os = "macos")))]
         {
             let _ = tx;
             Err(SensorError::Failed(
@@ -438,5 +543,94 @@ mod tests {
     #[test]
     fn poll_interval_is_500_ms() {
         assert_eq!(POLL_INTERVAL, Duration::from_millis(500));
+    }
+
+    #[test]
+    fn mac_geometry_handles_negative_monitor_and_maximize() {
+        let mut sample = super::super::foreground::MacDesktop {
+            status: "ok".into(),
+            pid: Some(42),
+            bundle_id: None,
+            title: None,
+            is_self: false,
+            fullscreen: None,
+            window: Some(MacRect {
+                x: -1920.0,
+                y: 0.0,
+                width: 1920.0,
+                height: 1080.0,
+            }),
+            display: Some(MacRect {
+                x: -1920.0,
+                y: 0.0,
+                width: 1920.0,
+                height: 1080.0,
+            }),
+        };
+        assert_eq!(mac_fullscreen(&sample).ok(), Some(Some(true)));
+        sample.window = Some(MacRect {
+            x: -1920.0,
+            y: 25.0,
+            width: 1920.0,
+            height: 1000.0,
+        });
+        assert_eq!(mac_fullscreen(&sample).ok(), Some(Some(false)));
+        sample.window = Some(MacRect {
+            x: 0.0,
+            y: 0.0,
+            width: 1920.0,
+            height: 1080.0,
+        });
+        assert_eq!(mac_fullscreen(&sample).ok(), Some(None));
+        sample.window = Some(MacRect {
+            x: f64::NAN,
+            y: 0.0,
+            width: 1920.0,
+            height: 1080.0,
+        });
+        assert_eq!(mac_fullscreen(&sample).ok(), Some(None));
+        sample.fullscreen = Some(true);
+        assert_eq!(mac_fullscreen(&sample).ok(), Some(Some(true)));
+        sample.is_self = true;
+        assert_eq!(mac_fullscreen(&sample).ok(), Some(None));
+    }
+
+    #[test]
+    fn mac_null_or_denied_keeps_fullscreen_state_and_errors_propagate() {
+        let mut edge = Edge::new();
+        assert_eq!(
+            edge.observe(Some(true)),
+            Some(FioreEvent::FullscreenEntered {})
+        );
+        for json in [
+            r#"{"status":"ok","pid":42,"fullscreen":null}"#,
+            r#"{"status":"denied"}"#,
+        ] {
+            let sample = serde_json::from_str(json);
+            assert!(sample.is_ok());
+            if let Ok(sample) = sample {
+                assert!(edge
+                    .observe(mac_fullscreen(&sample).ok().flatten())
+                    .is_none());
+            }
+        }
+        assert!(edge.observe(Some(true)).is_none());
+        let error = serde_json::from_str(r#"{"status":"error"}"#);
+        assert!(error.is_ok());
+        if let Ok(error) = error {
+            assert!(mac_fullscreen(&error).is_err());
+        }
+        // A successful native enumeration with no ordinary window is known false,
+        // unlike a missing/failed observation. Returning to the desktop unhides.
+        let desktop = serde_json::from_str(
+            r#"{"status":"ok","pid":42,"bundle_id":"com.apple.finder","fullscreen":false}"#,
+        );
+        assert!(desktop.is_ok());
+        if let Ok(desktop) = desktop {
+            assert_eq!(
+                edge.observe(mac_fullscreen(&desktop).ok().flatten()),
+                Some(FioreEvent::FullscreenExited {})
+            );
+        }
     }
 }

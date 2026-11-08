@@ -1,4 +1,4 @@
-//! GSMTC session sensor: `music.started`, `music.track_changed`, `music.stopped`.
+//! Platform playback sensor: `music.started`, `music.track_changed`, `music.stopped`.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
@@ -13,7 +13,9 @@ pub(super) static MUSIC_PLAYING: AtomicBool = AtomicBool::new(false);
 
 const STOP_HOLD_MS: u64 = 2_000;
 const POLL_MS: u64 = 500;
+#[cfg(windows)]
 const BACKOFF_START_MS: u64 = 1_000;
+#[cfg(windows)]
 const BACKOFF_CAP_MS: u64 = 30_000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -135,12 +137,14 @@ impl MusicTracker {
 
 /// Prefer the current session when it is playing; otherwise the first playing session.
 #[derive(Debug, PartialEq, Eq)]
+#[cfg(any(windows, test))]
 enum SessionChoice {
     Current,
     Index(usize),
     None,
 }
 
+#[cfg(any(windows, test))]
 fn select_session(current_playing: bool, others: &[bool]) -> SessionChoice {
     if current_playing {
         return SessionChoice::Current;
@@ -163,10 +167,201 @@ impl Sensor for MediaSensor {
         {
             gsmtc::run(tx)
         }
-        #[cfg(not(windows))]
+        #[cfg(target_os = "macos")]
+        {
+            mac_media::run(tx)
+        }
+        #[cfg(not(any(windows, target_os = "macos")))]
         {
             let _ = tx;
             tracing::debug!(sensor = "media", "unsupported platform");
+            Ok(())
+        }
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
+mod mac_media {
+    use super::{failed, MusicTracker, Track};
+    use crate::events::FioreEvent;
+    use crate::sensors::SensorError;
+    use serde::Deserialize;
+    use std::sync::mpsc::Sender;
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "snake_case")]
+    enum Status {
+        Ok,
+        Unavailable,
+        Denied,
+        Error,
+    }
+
+    #[derive(Deserialize)]
+    struct Snapshot {
+        status: Status,
+        playing: bool,
+        title: String,
+        artist: String,
+        source_app: String,
+    }
+
+    impl Snapshot {
+        fn playing(self) -> Result<Option<Track>, SensorError> {
+            match self.status {
+                Status::Error => Err(failed("macOS media bridge failed")),
+                Status::Denied | Status::Unavailable => Ok(None),
+                Status::Ok if !self.playing => Ok(None),
+                Status::Ok => {
+                    if !matches!(
+                        self.source_app.as_str(),
+                        "com.apple.Music" | "com.spotify.client"
+                    ) {
+                        return Err(failed("macOS media bridge returned an unknown player"));
+                    }
+                    Ok(Some(Track {
+                        title: self.title,
+                        artist: self.artist,
+                        source_app: self.source_app,
+                    }))
+                }
+            }
+        }
+    }
+
+    trait MediaSource {
+        fn poll(&mut self) -> Result<Option<Track>, SensorError>;
+    }
+
+    fn tick(
+        source: &mut impl MediaSource,
+        tracker: &mut MusicTracker,
+        tx: &Sender<FioreEvent>,
+        now: u64,
+    ) -> Result<bool, SensorError> {
+        let playing = match source.poll() {
+            Ok(playing) => playing,
+            Err(err) => {
+                // Do not leave headphones or the audio meter running after a
+                // fatal bridge failure disables this sensor.
+                for event in tracker.stop_playing() {
+                    let _ = tx.send(event);
+                }
+                return Err(err);
+            }
+        };
+        for event in tracker.sample(playing, now) {
+            if tx.send(event).is_err() {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(super) fn run(tx: Sender<FioreEvent>) -> Result<(), SensorError> {
+        struct NativeMedia;
+        impl MediaSource for NativeMedia {
+            fn poll(&mut self) -> Result<Option<Track>, SensorError> {
+                unsafe extern "C" {
+                    fn fiore_macos_media_snapshot() -> *mut std::ffi::c_char;
+                }
+                // SAFETY: native function accepts no pointers and returns owned
+                // NUL-terminated JSON; snapshot frees it exactly once.
+                let ptr = unsafe { fiore_macos_media_snapshot() };
+                crate::sensors::macos::snapshot::<Snapshot>(ptr)?.playing()
+            }
+        }
+        let mut source = NativeMedia;
+        let mut tracker = MusicTracker::default();
+        let origin = std::time::Instant::now();
+        while tick(&mut source, &mut tracker, &tx, super::elapsed_ms(origin))? {
+            std::thread::sleep(std::time::Duration::from_millis(super::POLL_MS));
+        }
+        Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::sensors::media::{test_flag_lock, MUSIC_PLAYING};
+        use std::sync::atomic::Ordering;
+
+        fn parse(status: &str, playing: bool, app: &str) -> Result<Snapshot, serde_json::Error> {
+            serde_json::from_value(serde_json::json!({
+                "status": status, "playing": playing, "title": "A",
+                "artist": "B", "source_app": app
+            }))
+        }
+
+        #[test]
+        fn authorized_players_preserve_metadata_and_absence_is_not_failure(
+        ) -> Result<(), Box<dyn std::error::Error>> {
+            for app in ["com.apple.Music", "com.spotify.client"] {
+                let track = parse("ok", true, app)?
+                    .playing()?
+                    .ok_or("expected playing track")?;
+                assert_eq!(track.source_app, app);
+                assert_eq!(track.title, "A");
+                assert_eq!(track.artist, "B");
+                assert_eq!(parse("ok", false, app)?.playing()?, None);
+            }
+            for status in ["denied", "unavailable"] {
+                assert_eq!(parse(status, true, "")?.playing()?, None);
+            }
+            assert!(parse("error", false, "")?.playing().is_err());
+            assert!(parse("ok", true, "unknown")?.playing().is_err());
+            assert!(serde_json::from_str::<Snapshot>("{\"status\":\"ok\"}").is_err());
+            Ok(())
+        }
+
+        struct FakeSource(Option<Track>, bool);
+        impl MediaSource for FakeSource {
+            fn poll(&mut self) -> Result<Option<Track>, SensorError> {
+                if self.1 {
+                    Err(failed("fake failure"))
+                } else {
+                    Ok(self.0.clone())
+                }
+            }
+        }
+
+        #[test]
+        fn permission_loss_stops_after_hold_and_regrant_restarts(
+        ) -> Result<(), Box<dyn std::error::Error>> {
+            let _lock = test_flag_lock();
+            let (tx, rx) = std::sync::mpsc::channel();
+            let track = parse("ok", true, "com.spotify.client")?.playing()?;
+            let mut source = FakeSource(track.clone(), false);
+            let mut tracker = MusicTracker::default();
+            tick(&mut source, &mut tracker, &tx, 0)?;
+            assert!(matches!(rx.try_recv(), Ok(FioreEvent::MusicStarted { .. })));
+            source.0 = None;
+            tick(&mut source, &mut tracker, &tx, 500)?;
+            tick(&mut source, &mut tracker, &tx, 2499)?;
+            assert!(rx.try_recv().is_err());
+            tick(&mut source, &mut tracker, &tx, 2500)?;
+            assert!(matches!(rx.try_recv(), Ok(FioreEvent::MusicStopped {})));
+            assert!(!MUSIC_PLAYING.load(Ordering::Acquire));
+            source.0 = track;
+            tick(&mut source, &mut tracker, &tx, 3000)?;
+            assert!(matches!(rx.try_recv(), Ok(FioreEvent::MusicStarted { .. })));
+            Ok(())
+        }
+
+        #[test]
+        fn fatal_source_failure_clears_audio_gate_and_headphones(
+        ) -> Result<(), Box<dyn std::error::Error>> {
+            let _lock = test_flag_lock();
+            let (tx, rx) = std::sync::mpsc::channel();
+            let mut source = FakeSource(parse("ok", true, "com.apple.Music")?.playing()?, false);
+            let mut tracker = MusicTracker::default();
+            tick(&mut source, &mut tracker, &tx, 0)?;
+            rx.try_recv()?;
+            source.1 = true;
+            assert!(tick(&mut source, &mut tracker, &tx, 500).is_err());
+            assert!(matches!(rx.try_recv(), Ok(FioreEvent::MusicStopped {})));
+            assert!(!MUSIC_PLAYING.load(Ordering::Acquire));
             Ok(())
         }
     }

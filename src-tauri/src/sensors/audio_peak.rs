@@ -13,6 +13,9 @@ const BACKOFF_START_MS: u64 = 1_000;
 const BACKOFF_CAP_MS: u64 = 30_000;
 
 pub trait PeakSource {
+    fn enabled(&self) -> bool {
+        true
+    }
     fn open(&mut self) -> bool;
     fn peak(&mut self) -> Option<f32>;
     fn close(&mut self);
@@ -38,7 +41,7 @@ impl Default for PeakLoop {
 impl PeakLoop {
     /// One loop step. While the playing flag is clear, the source is not opened or read.
     pub fn step(&mut self, now_ms: u64, source: &mut dyn PeakSource) -> (Vec<FioreEvent>, u64) {
-        if !MUSIC_PLAYING.load(Ordering::Acquire) {
+        if !MUSIC_PLAYING.load(Ordering::Acquire) || !source.enabled() {
             self.drop_meter(source);
             self.backoff_ms = BACKOFF_START_MS;
             self.retry_at = 0;
@@ -118,11 +121,114 @@ impl Sensor for AudioPeakSensor {
         {
             device::run(tx)
         }
-        #[cfg(not(windows))]
+        #[cfg(target_os = "macos")]
+        {
+            mac_device::run(tx)
+        }
+        #[cfg(not(any(windows, target_os = "macos")))]
         {
             let _ = tx;
             tracing::debug!(sensor = "audio_peak", "unsupported platform");
             Ok(())
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+mod mac_device {
+    use super::{PeakLoop, PeakSource};
+    use crate::events::FioreEvent;
+    use crate::sensors::SensorError;
+    use std::ffi::c_void;
+    use std::ptr::NonNull;
+    use std::sync::mpsc::Sender;
+    use std::time::{Duration, Instant};
+
+    extern "C" {
+        fn fiore_macos_audio_supported() -> i32;
+        fn fiore_macos_audio_enabled() -> i32;
+        fn fiore_macos_peak_open() -> *mut c_void;
+        fn fiore_macos_peak_read(handle: *mut c_void, peak: *mut f32) -> i32;
+        fn fiore_macos_peak_close(handle: *mut c_void);
+    }
+
+    struct MacMeter {
+        handle: Option<NonNull<c_void>>,
+        failure_reported: bool,
+    }
+
+    impl PeakSource for MacMeter {
+        fn enabled(&self) -> bool {
+            // SAFETY: this bridge function has no pointer arguments and synchronizes its setting.
+            unsafe { fiore_macos_audio_enabled() != 0 }
+        }
+
+        fn open(&mut self) -> bool {
+            // SAFETY: called only on this sensor's worker; the bridge returns an owned opaque handle.
+            self.handle = NonNull::new(unsafe { fiore_macos_peak_open() });
+            if self.handle.is_none() && !self.failure_reported {
+                tracing::warn!(sensor = "audio_peak", "Mac output meter unavailable; check audio permission and re-enable audio reactions");
+                self.failure_reported = true;
+            }
+            self.handle.is_some()
+        }
+
+        fn peak(&mut self) -> Option<f32> {
+            let handle = self.handle?;
+            let mut peak = 0.0;
+            // SAFETY: handle is live and owned by this worker; peak points to writable f32 storage.
+            match unsafe { fiore_macos_peak_read(handle.as_ptr(), &mut peak) } {
+                0 => {
+                    self.failure_reported = false;
+                    Some(peak)
+                }
+                1 => Some(0.0), // No new callback: never replay the preceding amplitude.
+                _ => {
+                    if !self.failure_reported {
+                        tracing::warn!(sensor = "audio_peak", "Mac output meter interrupted");
+                        self.failure_reported = true;
+                    }
+                    None
+                }
+            }
+        }
+
+        fn close(&mut self) {
+            if let Some(handle) = self.handle.take() {
+                // SAFETY: take transfers the single owned live handle; native close drains callbacks.
+                unsafe { fiore_macos_peak_close(handle.as_ptr()) };
+            }
+        }
+    }
+
+    impl Drop for MacMeter {
+        fn drop(&mut self) {
+            self.close();
+        }
+    }
+
+    pub(super) fn run(tx: Sender<FioreEvent>) -> Result<(), SensorError> {
+        // SAFETY: the availability query has no arguments or ownership requirements.
+        if unsafe { fiore_macos_audio_supported() } == 0 {
+            return Err(SensorError::Failed(
+                "audio reactions require macOS 14.2 or newer".into(),
+            ));
+        }
+        let mut meter = MacMeter {
+            handle: None,
+            failure_reported: false,
+        };
+        let mut sampler = PeakLoop::default();
+        let origin = Instant::now();
+        loop {
+            let now = u64::try_from(origin.elapsed().as_millis()).unwrap_or(u64::MAX);
+            let (events, sleep_ms) = sampler.step(now, &mut meter);
+            for event in events {
+                if tx.send(event).is_err() {
+                    return Ok(());
+                }
+            }
+            std::thread::park_timeout(Duration::from_millis(sleep_ms));
         }
     }
 }
@@ -246,6 +352,68 @@ mod tests {
         fn close(&mut self) {
             self.closes += 1;
         }
+    }
+
+    struct PermissionGate {
+        enabled: bool,
+        source: Mock,
+    }
+
+    impl PeakSource for PermissionGate {
+        fn enabled(&self) -> bool {
+            self.enabled
+        }
+        fn open(&mut self) -> bool {
+            self.source.open()
+        }
+        fn peak(&mut self) -> Option<f32> {
+            self.source.peak()
+        }
+        fn close(&mut self) {
+            self.source.close();
+        }
+    }
+
+    #[test]
+    fn opt_in_gates_open_and_revocation_closes_live_meter() {
+        let _lock = test_flag_lock();
+        MUSIC_PLAYING.store(true, Ordering::Release);
+        let mut sampler = PeakLoop::default();
+        let mut source = PermissionGate {
+            enabled: false,
+            source: Mock {
+                open_ok: true,
+                peak: Some(0.5),
+                opens: 0,
+                peaks: 0,
+                closes: 0,
+            },
+        };
+        assert!(sampler.step(0, &mut source).0.is_empty());
+        assert_eq!(source.source.opens, 0);
+        source.enabled = true;
+        assert_eq!(
+            sampler.step(250, &mut source).0,
+            vec![FioreEvent::MusicLevel { peak: 0.5 }]
+        );
+        source.enabled = false;
+        assert!(sampler.step(316, &mut source).0.is_empty());
+        assert_eq!(source.source.closes, 1);
+        assert_eq!(source.source.peaks, 1);
+        source.enabled = true;
+        assert_eq!(
+            sampler.step(566, &mut source).0,
+            vec![FioreEvent::MusicLevel { peak: 0.5 }]
+        );
+        assert_eq!(source.source.opens, 2);
+        MUSIC_PLAYING.store(false, Ordering::Release);
+    }
+
+    #[test]
+    fn infinities_cannot_drive_animation_amplitude() {
+        assert_eq!(super::clamp_unit(f32::INFINITY), 0.0);
+        assert_eq!(super::clamp_unit(f32::NEG_INFINITY), 0.0);
+        assert_eq!(super::clamp_unit(f32::NAN), 0.0);
     }
 
     #[test]
