@@ -9,4 +9,8 @@ Preview with `npx vite docs/site --host 127.0.0.1`; run detection cases with `no
 
 Downloads intentionally target the tested v0.3.0 release. When shipping a new version, update the visible version, platform requirements and exact asset URLs in `index.html` and the button hints in `app.js`, then check the release assets before publishing. Unknown/mobile browsers get a chooser; all visitors retain manual links. OS detection does not determine CPU architecture; the Windows build is explicitly labeled x64 and Mac is universal.
 
-The [README installation notes](../../README.md#installation) own detailed security and troubleshooting guidance. The site summarizes first-run steps and links there for complete instructions.
+The [README installation notes](../../README.md#installation) own detailed security and troubleshooting guidance. The site links there instead of repeating installation steps.
+
+The reaction selector uses actual preview atlas rows for coding, writing, browsing, music, petting and fullscreen hide/return. The last sequence is a demonstration, not browser fullscreen detection. Time and seasons are noted separately. Website-only greeting and pointing poses are reproducible with `node docs/site/generate-gestures.mjs`; they do not add desktop events or change app sprites.
+
+The theme follows the system until the visitor chooses a mode, then stores that preference locally. Storage failures leave controls usable. The global animation control pauses all sprites; reduced-motion preferences disable animation while keeping the event selector usable.

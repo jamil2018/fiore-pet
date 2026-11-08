@@ -33,8 +33,8 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site/assets
-          cp docs/site/index.html docs/site/styles.css docs/site/app.js docs/site/platform.mjs _site/
-          cp docs/site/assets/preview.png _site/assets/
+          cp docs/site/index.html docs/site/styles.css docs/site/app.js docs/site/theme.js docs/site/platform.mjs _site/
+          cp docs/site/assets/*.png _site/assets/
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site

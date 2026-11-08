@@ -2,17 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       name="description"
-      content="Meet Fiore, a little desktop cat that keeps you company while you work, browse and listen to music. Download for Windows or try the Mac preview."
+      content="A desktop cat that reacts to your work, music and day. Meet Fiore. Available for Windows and macOS."
     />
     <meta name="theme-color" content="#f7f4eb" />
-    <title>Fiore — a little company for your desktop</title>
+    <title>Fiore — your desktop companion</title>
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23dde7b9'/%3E%3Ctext x='32' y='48' text-anchor='middle' font-size='50' fill='%23365842'%3E✳%3C/text%3E%3C/svg%3E"
     />
+    <script src="theme.js"></script>
     <link rel="stylesheet" href="styles.css" />
     <script type="module" src="app.js"></script>
   </head>
@@ -20,260 +21,182 @@
     <a class="skip" href="#main">Skip to content</a>
     <header class="shell header">
       <a class="wordmark" href="./" aria-label="Fiore home"
-        ><span class="flower" aria-hidden="true">✳</span> fiore<span
-          class="wordmark-dot"
-          >.</span
-        ></a
+        >fiore<span>.</span></a
       >
       <nav aria-label="Main navigation">
-        <a href="#install">Installation</a
-        ><a href="https://github.com/jamil2018/fiore-pet"
-          >GitHub <span aria-hidden="true">↗</span></a
+        <a href="#reactions">Reactions</a><a href="#downloads">Download</a
+        ><button
+          id="theme"
+          class="icon-button"
+          type="button"
+          aria-label="Use dark mode"
+          aria-pressed="false"
         >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z" />
+          </svg>
+        </button>
       </nav>
     </header>
     <main id="main">
       <section class="shell hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow">
-            <span class="status-dot"></span> SMALL CAT. GOOD COMPANY.
-          </p>
-          <h1 id="hero-title">
-            Your desktop,<br />a little <span>more alive.</span>
-          </h1>
-          <p class="intro">
-            Meet Fiore. A pixel cat that settles into your corner of the screen,
-            reacts to your day, and makes work feel a little less lonely.
-          </p>
-          <a id="download" class="button primary" href="#downloads"
-            >Choose your download <span aria-hidden="true">↓</span></a
+          <p class="eyebrow">YOUR DESKTOP COMPANION</p>
+          <h1 id="hero-title">A little cat.<br />A little company.</h1>
+          <p class="intro">Fiore reacts to your work, your music, and you.</p>
+          <a id="download" class="button" href="#downloads"
+            >Choose your download ↓</a
           >
-          <p id="download-hint" class="download-hint" aria-live="polite">
-            For Windows & macOS · v0.3.0
+          <p id="download-hint" class="fine" aria-live="polite">
+            Windows & macOS · v0.3.0
           </p>
-          <a class="text-link" href="#downloads"
-            >All downloads & platform details
-            <span aria-hidden="true">↗</span></a
-          >
         </div>
-        <div
-          class="pet-stage"
-          aria-label="Illustrated desktop scene with Fiore's actual pixel-art animation"
-        >
-          <div class="stage-top">
-            <span class="window-dots" aria-hidden="true">● ● ●</span
-            ><span>A LITTLE SPACE FOR FIORE</span>
-          </div>
-          <div class="stage-scene">
-            <span class="stage-spark spark-one" aria-hidden="true">✳</span
-            ><span class="stage-spark spark-two" aria-hidden="true">+</span>
-            <div class="greeting">I'll keep you company.</div>
-            <div
-              class="pet"
-              role="img"
-              aria-label="Fiore, a cream-colored pixel cat"
-            ></div>
-            <div class="pet-shadow" aria-hidden="true"></div>
-            <span class="scene-label">at home on your desktop</span>
-          </div>
-          <div class="stage-bottom">
-            <span><span class="status-dot"></span> Just hanging out</span
-            ><button id="motion" type="button" aria-pressed="false">
-              Pause animation
-            </button>
-          </div>
+        <div class="hero-pet">
+          <span class="hello" aria-hidden="true">hello.</span
+          ><button
+            id="greet"
+            class="pet-button"
+            type="button"
+            aria-label="Wave to Fiore"
+          >
+            <span class="sprite gesture wave" aria-hidden="true"></span>
+          </button>
+          <p id="greeting" class="fine" aria-live="polite">Wave back.</p>
         </div>
       </section>
-      <div class="shell quick-facts">
-        <span>Stays where you put it</span><span>Reacts to work & music</span
-        ><span>No keystroke content read</span>
+      <div class="shell essentials">
+        <span>Drag to your favorite spot.</span
+        ><span>Stays where you leave it.</span
+        ><span>No keystroke content read.</span>
       </div>
-      <section class="shell companion" aria-labelledby="companion-title">
-        <div>
-          <p class="eyebrow">A COMPANION, NOT ANOTHER TASK</p>
-          <h2 id="companion-title">Fits right into<br />your everyday.</h2>
-          <p>
-            No feeding schedule. No desktop chase. Just a small friend, right
-            where you left them.
-          </p>
+      <section
+        id="reactions"
+        class="shell reactions"
+        aria-labelledby="reactions-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">IN GOOD COMPANY</p>
+            <h2 id="reactions-title">Your day, in little gestures.</h2>
+          </div>
+          <button
+            id="motion"
+            class="quiet-button"
+            type="button"
+            aria-pressed="false"
+          >
+            Pause animations
+          </button>
         </div>
-        <div class="features">
-          <article>
-            <span class="feature-number">01</span>
-            <div>
-              <h3>In your corner</h3>
-              <p>
-                Drag Fiore anywhere with your mouse. Your cat stays put while
-                you get on with your day.
+        <div class="playground">
+          <div
+            class="event-controls"
+            role="group"
+            aria-label="Preview a reaction"
+          >
+            <button type="button" data-event="code" aria-pressed="true">
+              Coding <span aria-hidden="true">↗</span></button
+            ><button type="button" data-event="write" aria-pressed="false">
+              Writing <span aria-hidden="true">↗</span></button
+            ><button type="button" data-event="browse" aria-pressed="false">
+              Browsing <span aria-hidden="true">↗</span></button
+            ><button type="button" data-event="music" aria-pressed="false">
+              Music <span aria-hidden="true">↗</span></button
+            ><button type="button" data-event="pet" aria-pressed="false">
+              Petting <span aria-hidden="true">↗</span></button
+            ><button type="button" data-event="fullscreen" aria-pressed="false">
+              Fullscreen <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+          <div class="event-preview">
+            <span id="event-context" class="context-label">Editor open</span>
+            <div class="preview-space">
+              <div
+                id="event-pet"
+                class="sprite"
+                style="--row: 5; --speed: 1s"
+                role="img"
+                aria-label="Fiore typing on a laptop"
+              ></div>
+            </div>
+            <div class="event-caption" aria-live="polite">
+              <h3 id="event-title">A coding buddy.</h3>
+              <p id="event-description">
+                Open your editor. Fiore gets to work too.
               </p>
             </div>
-          </article>
-          <article>
-            <span class="feature-number">02</span>
-            <div>
-              <h3>A little rhythm, a little focus</h3>
-              <p>
-                Watch Fiore react when you code, write, browse or play music.
-                Fullscreen detection helps keep your screen clear.
-              </p>
-            </div>
-          </article>
-          <article>
-            <span class="feature-number">03</span>
-            <div>
-              <h3>Small gestures. Plenty of character.</h3>
-              <p>
-                Pixel-art expressions, seasonal outfits and a happy reaction
-                when you stop by for a pet.
-              </p>
-            </div>
-          </article>
+            <span class="preview-label">Live animation preview</span>
+          </div>
         </div>
+        <p class="event-footnote">
+          Also reacts to time of day and seasons.
+          <a
+            href="https://github.com/jamil2018/fiore-pet/blob/main/docs/reference/macos-sensors.md"
+            >Mac permissions & coverage ↗</a
+          >
+        </p>
       </section>
       <section
         id="downloads"
         class="download-section"
-        aria-labelledby="downloads-title"
+        aria-labelledby="download-title"
       >
         <div class="shell">
-          <div class="section-heading">
+          <div class="download-heading">
             <div>
-              <p class="eyebrow">MAKE YOURSELF AT HOME</p>
-              <h2 id="downloads-title">Pick your desktop.</h2>
+              <p class="eyebrow">ROOM FOR ONE MORE?</p>
+              <h2 id="download-title">Bring Fiore home.</h2>
+              <a id="download-bottom" class="button" href="#platforms"
+                >Choose your download ↓</a
+              >
             </div>
-            <a
-              class="text-link"
-              href="https://github.com/jamil2018/fiore-pet/releases/tag/v0.3.0"
-              >v0.3.0 release notes ↗</a
-            >
+            <div class="download-pet" aria-hidden="true">
+              <span class="sprite gesture point"></span>
+            </div>
           </div>
-          <div class="download-grid">
-            <article class="download-card">
-              <div class="platform-heading">
-                <h3>Windows</h3>
-                <span class="tag">Full product</span>
-              </div>
+          <div id="platforms" class="platforms">
+            <article>
+              <h3>Windows</h3>
               <p>Windows 10 / 11 · x64</p>
               <a
                 id="windows-download"
-                class="button primary"
+                class="platform-link"
                 href="https://github.com/jamil2018/fiore-pet/releases/download/v0.3.0/Fiore_0.3.0_windows-x64-setup.exe"
-                >Download Windows installer <span aria-hidden="true">↓</span></a
+                >Installer ↓</a
               ><a
-                class="text-link"
                 href="https://github.com/jamil2018/fiore-pet/releases/download/v0.3.0/Fiore_0.3.0_windows-x64-portable.zip"
-                >Prefer a portable ZIP? ↗</a
+                >Portable ZIP</a
               >
-              <p class="platform-note">
-                Unsigned build. SmartScreen may ask you to approve it. The
-                portable app requires WebView2.
-              </p>
             </article>
-            <article class="download-card">
-              <div class="platform-heading">
-                <h3>macOS</h3>
-                <span class="tag preview">Experimental preview</span>
-              </div>
+            <article>
+              <h3>macOS <span class="tag">Preview</span></h3>
               <p>macOS 10.15+ · Apple Silicon & Intel</p>
               <a
                 id="mac-download"
-                class="button secondary"
+                class="platform-link"
                 href="https://github.com/jamil2018/fiore-pet/releases/download/v0.3.0/Fiore_0.3.0_macos-universal-preview.dmg"
-                >Download Mac DMG <span aria-hidden="true">↓</span></a
+                >DMG ↓</a
               ><a
-                class="text-link"
                 href="https://github.com/jamil2018/fiore-pet/releases/download/v0.3.0/Fiore_0.3.0_macos-universal-preview.zip"
-                >Download the app ZIP ↗</a
+                >App ZIP</a
               >
-              <p class="platform-note">
-                Ad-hoc signed, not notarized. Gatekeeper may block first launch.
-                Live Mac compatibility testing is still needed.
-              </p>
             </article>
           </div>
-          <p class="availability">
-            Desktop app only; no Linux, iOS or Android build. Auto-detection is
-            a convenience—use the links above if it picks the wrong platform.
+          <p class="fine release-note">
+            v0.3.0 · Windows is unsigned. Mac is experimental and not notarized.
+            <a href="https://github.com/jamil2018/fiore-pet#installation"
+              >Installation notes ↗</a
+            >
           </p>
         </div>
-      </section>
-      <section
-        id="install"
-        class="shell installation"
-        aria-labelledby="install-title"
-      >
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">A QUICK HELLO</p>
-            <h2 id="install-title">From download to desktop.</h2>
-          </div>
-          <p>
-            Current builds don't have verified publisher signing. Only approve a
-            download if you trust its source.
-          </p>
-        </div>
-        <div class="installation-grid">
-          <article>
-            <h3>On Windows</h3>
-            <ol>
-              <li>
-                <strong>Run the installer.</strong> Download the setup file
-                above and open it.
-              </li>
-              <li>
-                <strong>Review the SmartScreen prompt.</strong> If “Windows
-                protected your PC” appears, select
-                <b>More info → Run anyway</b>, if offered and you trust the
-                file. “Unknown publisher” is expected.
-              </li>
-              <li>
-                <strong>Say hello.</strong> Finish the per-user installation,
-                open Fiore, and drag your cat to a comfortable spot.
-              </li>
-            </ol>
-          </article>
-          <article>
-            <h3>On Mac</h3>
-            <ol>
-              <li>
-                <strong>Move Fiore into Applications.</strong> Open the DMG and
-                copy <b>Fiore.app</b> into your Applications folder.
-              </li>
-              <li>
-                <strong>Try opening it once.</strong> If Gatekeeper blocks it
-                and you trust the download, find Fiore in
-                <b>System Settings → Privacy & Security → Open Anyway</b> and
-                confirm.
-              </li>
-              <li>
-                <strong>Set up the reactions you want.</strong> Follow the
-                <a
-                  href="https://github.com/jamil2018/fiore-pet/blob/main/docs/reference/macos-sensors.md"
-                  >Mac permissions guide</a
-                >
-                for activity, music and optional browser playback.
-              </li>
-            </ol>
-          </article>
-        </div>
-        <aside class="installation-note">
-          <strong>A note about security.</strong> Keep Windows security and
-          Gatekeeper enabled. Managed devices may not offer an exception. These
-          steps are for unsigned-app warnings, not malware or damaged-app
-          alerts. For older macOS settings, checksums and troubleshooting, read
-          the
-          <a href="https://github.com/jamil2018/fiore-pet#installation"
-            >full installation notes</a
-          >.
-        </aside>
       </section>
     </main>
     <footer class="shell footer">
       <a class="wordmark" href="./">fiore.</a>
-      <p>A little company for the things you do.</p>
-      <a href="https://github.com/jamil2018/fiore-pet/issues"
-        >Feedback & bug reports ↗</a
-      >
+      <div>
+        <a href="https://github.com/jamil2018/fiore-pet">GitHub ↗</a
+        ><a href="https://github.com/jamil2018/fiore-pet/issues">Feedback ↗</a>
+      </div>
     </footer>
   </body>
 </html>
