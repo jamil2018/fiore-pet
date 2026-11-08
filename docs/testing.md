@@ -1,7 +1,7 @@
 # Testing
 
 Purpose: what is tested where, the golden replay format, how sensors are mocked, and what stays manual.
-last-verified: 2026-11-07
+last-verified: 2026-11-08
 
 Run with `pwsh scripts/check.ps1 -Tier fast|full [-Scope <paths>]`. `fast` = unit tests; `full` adds golden replay and the Tauri build.
 
@@ -43,7 +43,8 @@ File `src/behavior/golden/<name>.json`:
 - Frontend uses `src/bridge/mock.ts`; tests feed events directly to the engine.
 
 ## Manual / simulator checks
-Not automatable: real media playback, real fullscreen, real foreground apps, tray, autostart/installer, perf. Covered by simulators (`scripts/dev/sim/`: `start-notepad.ps1`, `play-test-tone.ps1`, `fullscreen-window.ps1`, `FIORE_FAKE_CLOCK`) and `emit-event.mjs`, and a checklist run in W3.0:
+Not automatable: real media playback, real fullscreen, real foreground apps, tray, autostart/installer, perf. Covered by simulators (`scripts/dev/sim/`: `start-notepad.ps1`, `play-test-tone.ps1`, `fullscreen-window.ps1`, `FIORE_FAKE_CLOCK`) and `emit-event.mjs`.
+v0.1.0 results, idle CPU/RAM numbers, and the sampler CLI (`scripts/dev/perf-sample.ps1`) are in `docs/release/v0.1.0-checklist.md`. Catalog to run:
 - [ ] Each catalog event triggered by hand plays its documented reaction.
 - [ ] `FIORE_FAKE_CLOCK` covers every mood and season.
 - [ ] Notepad -> `writing`; browser -> `browsing`; editor -> `coding`.
@@ -51,7 +52,7 @@ Not automatable: real media playback, real fullscreen, real foreground apps, tra
 - [ ] Fullscreen window -> hide; exit -> appear.
 - [ ] Petting gestures; tray Show/Hide/Quit; single instance.
 - [ ] Idle CPU < 1%, RAM < ~60 MB.
-Record manual results in the handoff or `docs/backlog.md`; the judge accepts a documented manual check for these only.
+The judge accepts a documented manual check for these only.
 
 ## Rules
 - No deleting or skipping tests to pass. A bug fix adds a regression test.
