@@ -1,6 +1,6 @@
 [package]
 name = "fiore"
-version = "0.3.0"
+version = "0.3.1"
 description = "Fiore desktop pet"
 edition = "2021"
 rust-version = "1.90"

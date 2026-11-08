@@ -3,7 +3,7 @@ name: release artifacts
 on:
   workflow_dispatch:
   push:
-    branches: [codex/release-0.3.0]
+    branches: [codex/release-0.3.1]
 
 permissions:
   contents: read
@@ -105,7 +105,15 @@ jobs:
           version=$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")
           bundle=src-tauri/target/universal-apple-darwin/release/bundle
           app="$bundle/macos/Fiore.app"
+          icon_file=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$app/Contents/Info.plist")
+          [[ -n "$icon_file" ]]
+          [[ "$icon_file" == *.icns ]] || icon_file="${icon_file}.icns"
+          packaged_icon="$app/Contents/Resources/$icon_file"
+          [[ -f "$packaged_icon" ]]
+          cmp src-tauri/icons/icon.icns "$packaged_icon"
+          echo "Packaged icon matches source: $icon_file"
           codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv --verbose=4 "$app"
           codesign -d --entitlements :- "$app" > entitlements.plist
           /usr/libexec/PlistBuddy -c 'Print :com.apple.security.automation.apple-events' entitlements.plist | grep true
           /usr/libexec/PlistBuddy -c 'Print :NSAppleEventsUsageDescription' "$app/Contents/Info.plist"
