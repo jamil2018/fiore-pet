@@ -229,12 +229,12 @@ describe('createEngine', () => {
         payload: { ...snapshot.payload, activity: 'coding', mood: 'sleepy' },
       },
     });
-    expect(engine.handle({ kind: 'tick', now: 119_999 }).body).toBe('code');
-    expect(engine.handle({ kind: 'tick', now: 120_000 }).body).toBe('yawn');
-    expect(engine.handle({ kind: 'tick', now: 121_000 }).body).toBe('code');
+    expect(engine.handle({ kind: 'tick', now: 19_999 }).body).toBe('code');
+    expect(engine.handle({ kind: 'tick', now: 20_000 }).body).toBe('yawn');
+    expect(engine.handle({ kind: 'tick', now: 21_000 }).body).toBe('code');
     engine.handle({
       kind: 'event',
-      now: 121_000,
+      now: 21_000,
       event: { type: 'time.mood_changed', payload: { mood: 'content' } },
     });
     expect(engine.handle({ kind: 'tick', now: 400_000 }).body).toBe('code');
@@ -261,6 +261,92 @@ describe('createEngine', () => {
       }).body,
     ).toBe('stretch');
     expect(rolls.length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    { roll: 0, delay: 20_000 },
+    { roll: 0.5, delay: 30_000 },
+    { roll: 1 - Number.EPSILON, delay: 40_000 },
+  ])('ac_ms_5_yawn_starts_at_$delay_ms_and_never_early', ({ roll, delay }) => {
+    const engine = createEngine(config(scripted(() => roll)), []);
+    engine.handle({
+      kind: 'event',
+      now: 500,
+      event: { type: 'time.mood_changed', payload: { mood: 'sleepy' } },
+    });
+    expect(engine.handle({ kind: 'tick', now: 500 + delay - 1 }).body).toBe('idle');
+    expect(engine.handle({ kind: 'tick', now: 500 + delay }).body).toBe('yawn');
+    expect(engine.handle({ kind: 'tick', now: 1500 + delay }).body).toBe('idle');
+  });
+
+  it('ac_ms_5_each_yawn_schedules_a_fresh_random_interval', () => {
+    const rolls = [0, 1 - Number.EPSILON, 0.5];
+    const engine = createEngine(config(scripted(() => rolls.shift() ?? 0)), []);
+    engine.handle({
+      kind: 'event',
+      now: 0,
+      event: { type: 'time.mood_changed', payload: { mood: 'sleepy' } },
+    });
+    expect(engine.handle({ kind: 'tick', now: 20_000 }).body).toBe('yawn');
+    expect(engine.handle({ kind: 'tick', now: 59_999 }).body).toBe('idle');
+    expect(engine.handle({ kind: 'tick', now: 60_000 }).body).toBe('yawn');
+    expect(engine.handle({ kind: 'tick', now: 89_999 }).body).toBe('idle');
+    expect(engine.handle({ kind: 'tick', now: 90_000 }).body).toBe('yawn');
+  });
+
+  it('ac_ms_5_leaving_sleepy_cancels_the_deadline_and_reentry_starts_fresh', () => {
+    const engine = createEngine(config(scripted(() => 0)), []);
+    engine.handle({
+      kind: 'event',
+      now: 0,
+      event: { type: 'time.mood_changed', payload: { mood: 'sleepy' } },
+    });
+    engine.handle({
+      kind: 'event',
+      now: 19_000,
+      event: { type: 'time.mood_changed', payload: { mood: 'content' } },
+    });
+    expect(engine.handle({ kind: 'tick', now: 20_000 }).body).toBe('idle');
+    expect(engine.handle({ kind: 'tick', now: 80_000 }).body).toBe('idle');
+    engine.handle({
+      kind: 'event',
+      now: 90_000,
+      event: { type: 'time.mood_changed', payload: { mood: 'sleepy' } },
+    });
+    expect(engine.handle({ kind: 'tick', now: 109_999 }).body).toBe('idle');
+    expect(engine.handle({ kind: 'tick', now: 110_000 }).body).toBe('yawn');
+  });
+
+  it('ac_ms_5_sleepy_music_and_coding_pause_bob_for_yawn_then_resume_work', () => {
+    const engine = createEngine(config(scripted(() => 0)));
+    engine.handle({
+      kind: 'event',
+      now: 0,
+      event: {
+        ...snapshot,
+        payload: {
+          ...snapshot.payload,
+          activity: 'coding',
+          mood: 'sleepy',
+          music: { playing: true },
+        },
+      },
+    });
+    const working = {
+      body: 'code',
+      face: 'sleepy',
+      accessory: 'headphones',
+      overlay: 'headbob',
+      speed: 0.7,
+    };
+    expect(engine.handle({ kind: 'tick', now: 19_999 })).toMatchObject(working);
+    expect(engine.handle({ kind: 'tick', now: 20_000 })).toMatchObject({
+      ...working,
+      body: 'yawn',
+      overlay: null,
+    });
+    expect(engine.handle({ kind: 'tick', now: 20_999 }).body).toBe('yawn');
+    expect(engine.handle({ kind: 'tick', now: 21_000 })).toMatchObject(working);
   });
 
   it('ac_pt_3_petting_outranks_a_one_shot_and_hidden_outranks_petting', () => {
@@ -356,7 +442,7 @@ describe('createEngine', () => {
       reduce: (slice) => ({ slice, effects: [] }),
       tick: (slice, ctx) => ({
         slice,
-        effects: ctx.now === 120_000 ? [{ kind: 'oneShot', animation: 'wag' }] : [],
+        effects: ctx.now === 20_000 ? [{ kind: 'oneShot', animation: 'wag' }] : [],
       }),
       contribute: () => null,
     });
@@ -369,8 +455,8 @@ describe('createEngine', () => {
         payload: { ...snapshot.payload, activity: 'coding', mood: 'sleepy' },
       },
     });
-    expect(engine.handle({ kind: 'tick', now: 120_000 }).body).toBe('yawn');
-    expect(engine.handle({ kind: 'tick', now: 121_000 }).body).toBe('wag');
+    expect(engine.handle({ kind: 'tick', now: 20_000 }).body).toBe('yawn');
+    expect(engine.handle({ kind: 'tick', now: 21_000 }).body).toBe('wag');
   });
 
   it('a music reaction effect replaces the default notice', () => {

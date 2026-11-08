@@ -1,7 +1,7 @@
 # Lessons
 
 Purpose: short tagged rules learned from runs; the task packet includes only entries whose tags match the task.
-last-verified: 2026-11-08
+last-verified: 2026-11-09
 
 ## Rules
 - **Single writer:** only the orchestrator edits this file, during integration or `/ship` finish. Executor, debugger and judge return lesson candidates; they never write here.
@@ -48,3 +48,5 @@ last-verified: 2026-11-08
 - [#rust #testing #macos] when exposing platform code to unit tests, keep unused OS adapter types platform-gated and expose only exercised pure logic with `cfg(test)`, because all-target clippy checks the test build on every host (w37-macos-20261108, 2026-11-08)
 - [#macos #privacy] when adding browser playback reactions, constrain the opt-in probe to media properties and bound its tab scan, because page-wide inspection and unbounded background scans are unnecessary for music detection; see `docs/reference/macos-sensors.md` (w37-macos-20261108, 2026-11-08)
 - [#release #testing] when shipping icon updates with the app kept closed, inspect packaged icon resources and disclose runtime smoke gaps, because source artwork alone does not prove bundle contents (w46-release-20261108, 2026-11-08)
+
+- [#sprites #testing] when separating facial details, check contrast at display size as well as pixel gaps, because moving dark whiskers onto the silhouette can make them disappear (w47-sleepy-20261109, 2026-11-09)

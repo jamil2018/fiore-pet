@@ -222,6 +222,128 @@ describe('base atlas', () => {
     return count;
   }
 
+  function faceFrame(mood: string, name: string, index: number): Buffer {
+    const def = merged.lookup('face', mood, name);
+    if (!def?.image) throw new Error(`missing face ${mood}/${name}`);
+    const source = sheetImage(def.image);
+    return cell(source.pixels, source.width, index, def.row);
+  }
+
+  it('keeps sleepy eyelids separated from the body whiskers throughout idle, sit and yawn', () => {
+    for (const name of ['idle', 'sit', 'yawn']) {
+      for (let index = 0; index < 8; index++) {
+        const body = frame(name, index);
+        const face = faceFrame('sleepy', name, index);
+        const dy = merged.body(name).headOffset?.[index]?.[1] ?? 0;
+        let eyePixels = 0;
+        for (let y = 18 + dy; y <= 22 + dy; y++) {
+          for (let x = 15; x <= 34; x++) {
+            const pixel = (y * 48 + x) * 4;
+            if (face[pixel] !== 73 || face[pixel + 3] !== 255) continue;
+            eyePixels++;
+            for (let yy = y - 1; yy <= y + 1; yy++) {
+              for (let xx = x - 1; xx <= x + 1; xx++) {
+                const neighbor = (yy * 48 + xx) * 4;
+                expect(
+                  body[neighbor] === 73 && body[neighbor + 3] === 255,
+                  `${name}/${index} eye touches body ink`,
+                ).toBe(false);
+              }
+            }
+          }
+        }
+        expect(eyePixels).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('closes yawn eyes for every mood and replaces the resting mouth instead of stacking it', () => {
+    const resting = faceFrame('sleepy', 'yawn', 0);
+    const closed = faceFrame('sleepy', 'yawn', 1);
+    expect(difference(resting, closed)).toBeGreaterThan(0);
+    for (let index = 1; index <= 6; index++) {
+      const expected = faceFrame('sleepy', 'yawn', index);
+      for (const mood of FACES) expect(faceFrame(mood, 'yawn', index)).toEqual(expected);
+      if (index < 2 || index > 5) continue;
+      const dy = merged.body('yawn').headOffset?.[index]?.[1] ?? 0;
+      for (const x of [21, 28]) {
+        expect(expected[((27 + dy) * 48 + x) * 4 + 3], 'no resting smile beside open mouth').toBe(
+          0,
+        );
+      }
+    }
+    expect(faceFrame('sleepy', 'yawn', 7)).toEqual(resting);
+  });
+
+  it('keeps both whisker strokes visible inside each cheek, not only on the outline', () => {
+    for (const name of ['idle', 'sit', 'yawn']) {
+      for (let index = 0; index < 8; index++) {
+        const body = frame(name, index);
+        const dy = merged.body(name).headOffset?.[index]?.[1] ?? 0;
+        for (const row of [24, 26]) {
+          for (const start of [14, 32]) {
+            let visibleInk = 0;
+            for (let x = start; x < start + 4; x++) {
+              const pixel = ((row + dy) * 48 + x) * 4;
+              if (body[pixel] === 73 && body[pixel + 3] === 255) visibleInk++;
+            }
+            expect(visibleInk, `${name}/${index} cheek stroke`).toBeGreaterThanOrEqual(3);
+          }
+        }
+      }
+    }
+  });
+
+  it('clears each sleepy yawn frame and draws one synchronized frame per layer', () => {
+    for (const group of SPRITE_GROUPS) rememberSprite(`${group}.png`, {} as CanvasImageSource);
+    const draws: number[][] = [];
+    let clears = 0;
+    const ctx = {
+      imageSmoothingEnabled: false,
+      save() {},
+      restore() {},
+      clearRect() {
+        clears++;
+        draws.length = 0;
+      },
+      drawImage(_image: CanvasImageSource, ...args: number[]) {
+        draws.push(args);
+      },
+    };
+    const canvas = { width: 0, height: 0, style: {}, getContext: () => ctx };
+    const animator = createAnimator(canvas as unknown as HTMLCanvasElement, merged);
+    for (let index = 0; index < 8; index++) {
+      animator.render(
+        {
+          body: 'yawn',
+          face: 'sleepy',
+          outfit: 'autumn',
+          accessory: 'headphones',
+          overlay: null,
+          speed: 0.7,
+          bubble: null,
+          visible: true,
+          move: 'stay',
+          facing: 'right',
+          overlayLevel: 1,
+        },
+        index * 125,
+      );
+      expect(clears).toBe(index + 1);
+      expect(draws).toHaveLength(4);
+      expect(
+        draws.every(
+          (draw) =>
+            draw[0] === index * 48 &&
+            draw[2] === 48 &&
+            draw[3] === 48 &&
+            draw[4] === 0 &&
+            draw[5] === 0,
+        ),
+      ).toBe(true);
+    }
+  });
+
   it('gives sitting and each activity visibly different artwork', () => {
     for (const [a, b] of [
       ['idle', 'sit'],

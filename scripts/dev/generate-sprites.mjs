@@ -154,8 +154,8 @@ function body(img, name, i) {
   h.e(14, 11.5, 6.8, 4.7, C.light);
   h.r(12, 7, 1.3, 2, C.fur); h.r(16, 6.3, 1.3, 2.7, C.fur); h.r(20, 8, 1.3, 1.3, C.fur);
   h.r(8, 16, 2, 0.7, C.peach); h.r(22, 16, 2, 0.7, C.peach);
-  h.r(6.7, 15, 3.3, 0.7, C.ink); h.r(22, 15, 3.3, 0.7, C.ink);
-  h.r(7.3, 17, 2.7, 0.7, C.ink); h.r(22, 17, 2.7, 0.7, C.ink);
+  h.r(8, 16, 4, 0.7, C.ink); h.r(21, 16, 4, 0.7, C.ink);
+  h.r(8.7, 17.5, 3, 0.7, C.ink); h.r(21.3, 17.5, 3, 0.7, C.ink);
   const raised = ['dance', 'happy', 'stretch', 'notice'].includes(name) && i > 1 && i < 6;
   if (stretch > 0) {
     for (const x of [6, 26]) { r(x - 1, 22 - stretch * 16, 2, stretch * 16, C.ink); r(x - 0.3, 22 - stretch * 16, 0.7, stretch * 16, C.fur); e(x, 22 - stretch * 18, 2, 2, C.ink); e(x, 21.5 - stretch * 18, 1.2, 1.2, C.light); }
@@ -196,12 +196,16 @@ function face(img, mood, name, i) {
   const { r, e } = painter(img, headPose(name, i));
   const blink = (['idle', 'sit', 'code', 'browse', 'write'].includes(name) && i === 6);
   const happy = mood === 'happy' || name === 'happy';
-  if (happy) {
+  const yawning = name === 'yawn' && i >= 1 && i <= 6;
+  if (yawning || blink || (name === 'stretch' && i > 1 && i < 6)) {
+    r(10.7, 13.3, 0.7, 0.7, C.ink); r(11.3, 14, 2, 0.7, C.ink); r(13.3, 13.3, 0.7, 0.7, C.ink);
+    r(19.7, 13.3, 0.7, 0.7, C.ink); r(20.3, 14, 2, 0.7, C.ink); r(22.3, 13.3, 0.7, 0.7, C.ink);
+  } else if (happy) {
     r(10, 14, 1, 1, C.ink); r(11, 13, 2, 1, C.ink); r(13, 14, 1, 1, C.ink);
     r(19, 14, 1, 1, C.ink); r(20, 13, 2, 1, C.ink); r(22, 14, 1, 1, C.ink);
-  } else if (blink || mood === 'sleepy' || (['yawn', 'stretch'].includes(name) && i > 1 && i < 6)) {
-    r(10, 15, 4, 1, C.ink); r(19, 15, 4, 1, C.ink);
-    if (!blink) { r(10, 14, 1, 1, C.ink); r(19, 14, 1, 1, C.ink); }
+  } else if (mood === 'sleepy') {
+    r(11, 13, 2, 1.3, C.ink); r(20, 13, 2, 1.3, C.ink);
+    r(10.7, 12.3, 2.7, 0.7, C.shade); r(19.7, 12.3, 2.7, 0.7, C.shade);
   } else {
     const h = mood === 'calm' ? 2 : 3;
     const gaze = name === 'think' ? -0.7 : name === 'browse' ? 0.7 : 0;
@@ -209,8 +213,13 @@ function face(img, mood, name, i) {
     r(11 + gaze, 12, 0.7, 0.7, C.white); r(20 + gaze, 12, 0.7, 0.7, C.white);
   }
   r(16, 16, 2, 1, C.pink); r(16, 17, 1, 1, C.ink);
-  r(14, 18, 2, 1, C.ink); r(17, 18, 2, 1, C.ink);
-  if (name === 'yawn' && i > 1 && i < 6) { e(16, 19, 2, 2, C.ink); r(16, 20, 1, 1, C.pink); }
+  if (name === 'yawn' && i > 1 && i < 6) {
+    const opening = [0, 0, 0.8, 1.8, 1.8, 0.8, 0, 0][i];
+    e(16.5, 18.5, 1.3, opening, C.ink);
+    if (opening > 1) r(16, 19, 1.3, 0.7, C.pink);
+  } else {
+    r(14, 18, 2, 1, C.ink); r(17, 18, 2, 1, C.ink);
+  }
 }
 
 function outfit(img, season, name, i) {

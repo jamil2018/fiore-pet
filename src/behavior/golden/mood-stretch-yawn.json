@@ -33,27 +33,27 @@
       "expect": { "body": "code", "face": "sleepy", "speed": 0.7 }
     },
     {
-      "at": 121999,
+      "at": 21999,
       "tick": true,
       "expect": { "body": "code", "face": "sleepy" }
     },
     {
-      "at": 195540,
+      "at": 34256,
       "tick": true,
       "expect": { "body": "code", "face": "sleepy" }
     },
     {
-      "at": 195541,
+      "at": 34257,
       "tick": true,
       "expect": { "body": "yawn", "face": "sleepy" }
     },
     {
-      "at": 196541,
+      "at": 35257,
       "tick": true,
       "expect": { "body": "code", "face": "sleepy" }
     },
     {
-      "at": 196541,
+      "at": 35257,
       "event": { "type": "time.mood_changed", "payload": { "mood": "content" } },
       "expect": { "body": "code", "face": "content", "speed": 1 }
     },

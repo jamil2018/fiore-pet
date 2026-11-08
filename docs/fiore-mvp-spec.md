@@ -1,7 +1,7 @@
 # Fiore MVP spec
 
 Purpose: single source of truth for MVP scope, the event catalog, behavior priority and acceptance criteria.
-last-verified: 2026-11-08
+last-verified: 2026-11-09
 
 Nothing outside the event catalog triggers behavior. `docs-check` keeps the catalog table (section 3) in sync with the `FioreEvent` enum: every variant appears here, and every event here is a variant. Event names are `dot.case`; payload field names are camelCase on the wire.
 
@@ -113,7 +113,7 @@ Payload types: `Category = coding | writing | browsing | other`; `Mood = energet
   - `energetic` 05-11: +20% speed, one `stretch` per day.
   - `content` 11-17: default face and speed.
   - `calm` 17-21: -15% speed.
-  - `sleepy` 21-05: droopy eyes, `yawn` every 2-4 min, -30% speed.
+  - `sleepy` 21-05: half-open eyes between yawns, `yawn` every 20-40 seconds, -30% speed. Eyes close during the yawn and reopen afterward; whiskers stay separate from the eyes.
 - `season.changed`: checked at startup and at midnight; northern hemisphere by default (config flag flips it). First outfit change plays `twirl`.
   - `winter` Dec-Feb: scarf and beanie. `spring` Mar-May: flower crown. `summer` Jun-Aug: sunglasses and straw hat (glasses only while coding). `autumn` Sep-Nov: hoodie with leaf.
 - A debug clock (env var `FIORE_FAKE_CLOCK`, ISO local time) overrides the system time so every mood and season is reachable.
@@ -122,7 +122,7 @@ Payload types: `Category = coding | writing | browsing | other`; `Mood = energet
 - **AC-MS-2:** month boundaries map exactly (Nov 30 autumn, Dec 1 winter, Feb 28/29 winter, Mar 1 spring, Aug 31 summer, Sep 1 autumn); hemisphere flag flips them.
 - **AC-MS-3:** mood never changes the body animation, only face and speed multiplier.
 - **AC-MS-4:** `twirl` plays on the first outfit change after startup only, not on `state.snapshot`.
-- **AC-MS-5:** `stretch` plays at most once per day; `yawn` only while `sleepy`.
+- **AC-MS-5:** `stretch` plays at most once per day; `yawn` only while `sleepy`, at randomized 20-40 second intervals. Each yawn uses one synchronized body/face frame with closed eyes and a single mouth; music bobbing pauses until the yawn finishes.
 
 ### 3.6 Snapshot (`hub.rs`)
 - `state.snapshot` is sent once on startup after all sensors registered, carrying current activity, mood, season, fullscreen and music state.

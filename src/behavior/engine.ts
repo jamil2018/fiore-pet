@@ -62,8 +62,8 @@ const HAPPY_MS = 1000;
 const AFTERGLOW_MS = 1000;
 const BUBBLE_MS = 3000;
 const DAY_MS = 86_400_000;
-const YAWN_MIN_MS = 120_000;
-const YAWN_SPAN_MS = 120_000;
+const YAWN_MIN_MS = 20_000;
+const YAWN_SPAN_MS = 20_000;
 const U32 = 4294967296;
 
 interface DefaultEffect {
