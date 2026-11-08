@@ -26,13 +26,15 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src-tauri/native/macos/common.m`: native allocation cleanup and permission feedback.
 - `src-tauri/native/macos/desktop.m`: front app identity, optional AX title and onscreen geometry.
 - `src-tauri/native/macos/media.m`: authorized Music/Spotify read-only playback metadata.
+- `src-tauri/native/macos/browser.m`: opt-in browser scripting, bounded background-tab discovery and selection.
+- `src-tauri/native/macos/browser_probe.js`: fixed media-only page probe; `browser_probe.test.mjs` exercises it in isolated mocks.
 - `src-tauri/native/macos/audio.m`: opt-in Core Audio output peak tap and lifecycle.
 - `src-tauri/build.rs`: platform-native bridge compilation and Tauri build setup.
 - `src-tauri/Info.plist`, `src-tauri/Entitlements.plist`: Mac permission descriptions and Apple Events entitlement.
-- `src-tauri/src/sensors/media.rs`: GSMTC session -> `music.started`, `music.track_changed`, `music.stopped` (2 s stop debounce).
-- `src-tauri/src/sensors/audio_peak.rs`: `IAudioMeterInformation` peak -> `music.level` at ~15 Hz while playing.
+- `src-tauri/src/sensors/media.rs`: GSMTC or Mac native/browser playback -> music events with 2 s stop debounce.
+- `src-tauri/src/sensors/audio_peak.rs`: Windows endpoint or opt-in Mac output tap -> `music.level` at ~15 Hz while playing.
 - `src-tauri/src/sensors/foreground.rs`: 500 ms foreground poll, classifier, 1.5 s hold -> `app.category_changed`.
-- `src-tauri/src/sensors/fullscreen.rs`: `SHQueryUserNotificationState` + monitor-rect compare -> `fullscreen.entered`/`exited`.
+- `src-tauri/src/sensors/fullscreen.rs`: Windows shell state or Mac native-window hints and display geometry -> fullscreen edges.
 - `src-tauri/src/sensors/clock.rs`: mood (1/min) and season (startup, midnight), `FIORE_FAKE_CLOCK`, hemisphere flag -> `time.mood_changed`, `season.changed`.
 - `src-tauri/resources/app-categories.json`: process-name and title-keyword rules per category.
 

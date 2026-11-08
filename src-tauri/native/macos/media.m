@@ -100,7 +100,7 @@ static NSDictionary *sample_player(int index) {
              @"artist": artist ?: @"", @"source_app": player_bundle(index)};
 }
 
-char *fiore_macos_media_snapshot(void) {
+char *fiore_macos_media_snapshot(const char *browser_probe) {
     @autoreleasepool {
         @try {
             // Only the media sensor worker accesses this selection. Keep the
@@ -112,6 +112,14 @@ char *fiore_macos_media_snapshot(void) {
             if ([second[@"playing"] boolValue]) {
                 preferred = 1 - preferred;
                 return encode_snapshot(second);
+            }
+            char *browser = fiore_macos_browser_snapshot(browser_probe);
+            if (browser) {
+                NSData *data = [NSData dataWithBytes:browser length:strlen(browser)];
+                id snapshot = [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL];
+                if ([snapshot isKindOfClass:NSDictionary.class] && [snapshot[@"playing"] boolValue])
+                    return browser;
+                free(browser);
             }
             // A denied player must not prevent an authorized player from working.
             if ([first[@"status"] isEqual:@"error"] || [second[@"status"] isEqual:@"error"])

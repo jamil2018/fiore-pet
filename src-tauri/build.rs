@@ -5,7 +5,7 @@ fn main() {
             .flag("-fobjc-arc")
             .flag("-fblocks")
             .include("native/macos");
-        for file in ["common.m", "desktop.m", "media.m", "audio.m"] {
+        for file in ["common.m", "desktop.m", "media.m", "audio.m", "browser.m"] {
             let path = format!("native/macos/{file}");
             println!("cargo:rerun-if-changed={path}");
             native.file(path);

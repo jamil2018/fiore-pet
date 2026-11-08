@@ -33,8 +33,22 @@ jobs:
         with:
           workspaces: src-tauri -> target
       - run: npm ci --no-audit --no-fund
+      - name: Verify installed browser scripting interfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/fiore-scripting"
+          cd "$RUNNER_TEMP/fiore-scripting"
+          sdef /Applications/Safari.app | sdp -fh --basename Safari --bundleid com.apple.Safari
+          grep -E 'doJavaScript:.*in:' Safari.h
+          if [[ -d '/Applications/Google Chrome.app' ]]; then
+            sdef '/Applications/Google Chrome.app' | sdp -fh --basename Chrome --bundleid com.google.Chrome
+            grep 'executeJavascript:' Chrome.h
+          fi
       - name: Native and frontend checks
         run: |
+          node --test src-tauri/native/macos/browser_probe.test.mjs
+          npm run build
           cargo fmt --manifest-path src-tauri/Cargo.toml --check
           cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
           cargo test --locked --manifest-path src-tauri/Cargo.toml

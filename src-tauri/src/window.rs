@@ -172,7 +172,7 @@ fn install_tray<R: Runtime>(app: &App<R>, autostart_ready: bool) -> Result<(), W
     let quit = MenuItem::with_id(app, QUIT_ID, "Quit", true, None::<&str>).map_err(to_setup)?;
     let menu = Menu::with_items(app, &[&show, &hide, &autostart, &quit]).map_err(to_setup)?;
     #[cfg(target_os = "macos")]
-    let audio_item = {
+    let (audio_item, browser_items) = {
         use crate::sensors::macos;
         let titles = MenuItem::with_id(
             app,
@@ -214,8 +214,34 @@ fn install_tray<R: Runtime>(app: &App<R>, autostart_ready: bool) -> Result<(), W
             &[&titles, &music, &spotify, &audio],
         )
         .map_err(to_setup)?;
+        let browsers = tauri::menu::Submenu::new(app, "Browser media", true).map_err(to_setup)?;
+        let mut items = Vec::new();
+        for (index, label) in [
+            "Chrome media…",
+            "Safari media…",
+            "Edge media…",
+            "Brave media…",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let index = index as i32;
+            let id = format!("mac_browser_{index}");
+            let item = CheckMenuItem::with_id(
+                app,
+                id.clone(),
+                label,
+                true,
+                macos::browser_enabled(index),
+                None::<&str>,
+            )
+            .map_err(to_setup)?;
+            browsers.append(&item).map_err(to_setup)?;
+            items.push((id, index, item));
+        }
+        permissions.append(&browsers).map_err(to_setup)?;
         menu.insert(&permissions, 3).map_err(to_setup)?;
-        audio
+        (audio, items)
     };
     let autostart_item = autostart.clone();
     let tray = TrayIconBuilder::<R>::new()
@@ -238,6 +264,15 @@ fn install_tray<R: Runtime>(app: &App<R>, autostart_ready: bool) -> Result<(), W
                 let enabled = crate::sensors::macos::toggle_audio();
                 if let Err(error) = audio_item.set_checked(enabled) {
                     tracing::warn!(%error, "audio menu sync failed");
+                }
+            }
+            #[cfg(target_os = "macos")]
+            id if id.starts_with("mac_browser_") => {
+                if let Some((_, index, item)) = browser_items.iter().find(|(key, _, _)| key == id) {
+                    let enabled = crate::sensors::macos::toggle_browser(*index);
+                    if let Err(error) = item.set_checked(enabled) {
+                        tracing::warn!(%error, "browser menu sync failed");
+                    }
                 }
             }
             QUIT_ID => handle.exit(0),

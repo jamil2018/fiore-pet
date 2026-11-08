@@ -66,14 +66,14 @@ pub struct WindowSample {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg(any(windows, test))]
+#[cfg(windows)]
 pub struct Sample {
     pub shell: Result<ShellState, ShellMiss>,
     pub window: Option<WindowSample>,
 }
 
 /// One sample of the shell and the current foreground window. Handles are not cached.
-#[cfg(any(windows, test))]
+#[cfg(windows)]
 pub trait FullscreenSource {
     fn sample(&self) -> Sample;
 }

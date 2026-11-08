@@ -16,6 +16,9 @@ unsafe extern "C" {
     fn fiore_macos_set_audio_enabled(enabled: c_int);
     fn fiore_macos_audio_supported() -> c_int;
     fn fiore_macos_show_message(message: *const c_char);
+    fn fiore_macos_browser_enabled(index: c_int) -> c_int;
+    fn fiore_macos_set_browser_enabled(index: c_int, enabled: c_int);
+    fn fiore_macos_request_browser_permission(index: c_int) -> c_int;
 }
 
 struct OwnedSnapshot(*mut c_char);
@@ -76,6 +79,48 @@ pub(crate) fn request_media(player: i32) {
 pub(crate) fn audio_supported() -> bool {
     // SAFETY: no arguments; availability query does not open an audio device.
     unsafe { fiore_macos_audio_supported() != 0 }
+}
+
+pub(crate) fn browser_enabled(index: i32) -> bool {
+    // SAFETY: the native preference helper validates indices and accepts no pointers.
+    unsafe { fiore_macos_browser_enabled(index) != 0 }
+}
+
+pub(crate) fn toggle_browser(index: i32) -> bool {
+    if browser_enabled(index) {
+        // SAFETY: validated native index; disabling only writes a preference.
+        unsafe { fiore_macos_set_browser_enabled(index, 0) };
+        return false;
+    }
+    if MEDIA_PERMISSION_PENDING.swap(true, Ordering::AcqRel) {
+        return false;
+    }
+    // SAFETY: index is validated by native code; this records explicit tray opt-in.
+    unsafe { fiore_macos_set_browser_enabled(index, 1) };
+    let result = std::thread::Builder::new()
+        .name("mac-browser-permission".into())
+        .spawn(move || {
+            // SAFETY: native request validates the index and only targets running browsers.
+            let status = unsafe { fiore_macos_request_browser_permission(index) };
+            MEDIA_PERMISSION_PENDING.store(false, Ordering::Release);
+            let message = match status {
+                0 if index == 1 => c"Safari reactions are enabled. In Safari's developer settings, enable Allow JavaScript from Apple Events. Fiore reads media playback and song metadata only. It does not read page text, forms or browsing history. Uncheck Safari media in the tray to stop detection.",
+                0 => c"Browser reactions are enabled. In your browser's Developer menu, enable Allow JavaScript from Apple Events (Chrome: View > Developer). Fiore reads media playback and song metadata only, not page text, forms or browsing history. Uncheck this browser in the tray to stop detection.",
+                1 => c"Open the selected browser, then toggle its media option off and on to request permission. Fiore never opens browsers for you.",
+                2 => c"Browser access was not granted. Enable Fiore in System Settings > Privacy & Security > Automation, then toggle this browser's media option off and on. The browser's Allow JavaScript from Apple Events setting is also required.",
+                _ => c"Browser permission could not be checked. Open the browser and toggle its media option off and on to retry.",
+            };
+            // SAFETY: static message is copied synchronously before native main-queue dispatch.
+            unsafe { fiore_macos_show_message(message.as_ptr()) };
+        });
+    if let Err(error) = result {
+        MEDIA_PERMISSION_PENDING.store(false, Ordering::Release);
+        // SAFETY: undo the preference when the permission worker cannot start.
+        unsafe { fiore_macos_set_browser_enabled(index, 0) };
+        tracing::warn!(%error, "could not start browser permission request");
+        return false;
+    }
+    true
 }
 
 pub(crate) fn audio_enabled() -> bool {

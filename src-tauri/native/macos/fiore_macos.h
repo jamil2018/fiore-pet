@@ -3,7 +3,11 @@
 #include <stddef.h>
 char *fiore_macos_desktop_snapshot(void);
 void fiore_macos_request_accessibility(void);
-char *fiore_macos_media_snapshot(void);
+char *fiore_macos_media_snapshot(const char *browser_probe);
+char *fiore_macos_browser_snapshot(const char *probe);
+int fiore_macos_browser_enabled(int index);
+void fiore_macos_set_browser_enabled(int index, int enabled);
+int fiore_macos_request_browser_permission(int index);
 int fiore_macos_request_media_permission(int player);
 void *fiore_macos_peak_open(void);
 int fiore_macos_peak_read(void *handle, float *peak);

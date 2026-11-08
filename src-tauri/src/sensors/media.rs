@@ -215,7 +215,12 @@ mod mac_media {
                 Status::Ok => {
                     if !matches!(
                         self.source_app.as_str(),
-                        "com.apple.Music" | "com.spotify.client"
+                        "com.apple.Music"
+                            | "com.spotify.client"
+                            | "com.google.Chrome"
+                            | "com.apple.Safari"
+                            | "com.microsoft.edgemac"
+                            | "com.brave.Browser"
                     ) {
                         return Err(failed("macOS media bridge returned an unknown player"));
                     }
@@ -264,11 +269,15 @@ mod mac_media {
         impl MediaSource for NativeMedia {
             fn poll(&mut self) -> Result<Option<Track>, SensorError> {
                 unsafe extern "C" {
-                    fn fiore_macos_media_snapshot() -> *mut std::ffi::c_char;
+                    fn fiore_macos_media_snapshot(
+                        probe: *const std::ffi::c_char,
+                    ) -> *mut std::ffi::c_char;
                 }
-                // SAFETY: native function accepts no pointers and returns owned
-                // NUL-terminated JSON; snapshot frees it exactly once.
-                let ptr = unsafe { fiore_macos_media_snapshot() };
+                const PROBE: &str =
+                    concat!(include_str!("../../native/macos/browser_probe.js"), "\0");
+                // SAFETY: probe is a static NUL-terminated UTF-8 script; native code
+                // only reads it during this call and returns malloc-owned JSON.
+                let ptr = unsafe { fiore_macos_media_snapshot(PROBE.as_ptr().cast()) };
                 crate::sensors::macos::snapshot::<Snapshot>(ptr)?.playing()
             }
         }
@@ -297,7 +306,14 @@ mod mac_media {
         #[test]
         fn authorized_players_preserve_metadata_and_absence_is_not_failure(
         ) -> Result<(), Box<dyn std::error::Error>> {
-            for app in ["com.apple.Music", "com.spotify.client"] {
+            for app in [
+                "com.apple.Music",
+                "com.spotify.client",
+                "com.google.Chrome",
+                "com.apple.Safari",
+                "com.microsoft.edgemac",
+                "com.brave.Browser",
+            ] {
                 let track = parse("ok", true, app)?
                     .playing()?
                     .ok_or("expected playing track")?;
