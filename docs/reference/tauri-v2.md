@@ -1,7 +1,7 @@
 # Tauri v2 reference (Fiore)
 
 Purpose: verified Tauri v2 facts the executor needs (window, capabilities, events, tray, plugins, v1 pitfalls) so nobody guesses these APIs.
-last-verified: 2026-11-07 (against v2.tauri.app and docs.rs `tauri` 2.12.5; see Sources)
+last-verified: 2026-11-08 (against v2.tauri.app and docs.rs `tauri` 2.12.5; see Sources)
 
 Legend: **[doc]** = stated by the official page cited in Sources. **[Fiore]** = our recommendation or inference; not stated by the docs, so check it with a manual run before relying on it.
 
@@ -209,9 +209,33 @@ If an example or memory says v1, translate. Rows marked (v2 pages) come from the
 4. Units: logical vs physical (section 2).
 5. After editing `tauri.conf.json` or capabilities, restart `tauri dev` **[Fiore]** (config is read at build/start). The `$schema` files in `src-tauri/gen/schemas` are produced by `tauri-build` **[doc]**.
 
+## 9. Bundle / NSIS
+
+Verified 2026-11-08 from the config reference and Windows installer page. Fiore keeps `bundle.targets: ["nsis"]` and the default WebView2 bootstrapper (`webviewInstallMode` omitted).
+
+`BundleConfig` keys used **[doc]**:
+
+| Key | Type | Notes |
+|---|---|---|
+| `publisher` | `string \| null` | Windows Manufacturer / debian Maintainer. Defaults to the second identifier segment. |
+| `shortDescription` | `string \| null` | Short app description. |
+| `copyright` | `string \| null` | Copyright string. |
+| `category` | `string \| null` | One of the listed kinds (Fiore: `Entertainment`). |
+
+`bundle.windows.nsis` (`NsisConfig`) **[doc]**:
+
+| Key | Type | Notes |
+|---|---|---|
+| `installMode` | `NSISInstallerMode` | `"currentUser"` (default), `"perMachine"`, `"both"`. Current-user matches the HKCU Run key autostart writes. |
+| `installerHooks` | `string \| null` | Path to a `.nsh` with `NSIS_HOOK_PREINSTALL` / `POSTINSTALL` / `PREUNINSTALL` / `POSTUNINSTALL`. Example path: `"./windows/hooks.nsh"`. |
+
+Installer page: per-user install needs no Administrator and lands under `%LOCALAPPDATA%`. `NSIS_HOOK_POSTUNINSTALL` runs after files, registry keys and shortcuts are removed.
+
+Autostart plugin (Rust-only): register with `app.handle().plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))`. JS permissions (`autostart:allow-*`) are not needed if the frontend never calls the plugin. Default is off until `enable()`. The Run value name is `app.package_info().name` **[doc]** plugin source; with `productName` set that name is the product name (Fiore), not `CARGO_PKG_NAME` **[doc]** tauri-codegen.
+
 ## Sources
 
-Fetched 2026-11-07. Capability and event pages were checked against their "Last updated" stamps (capabilities Nov 5 2026, calling-frontend Sep 9 2026).
+Fetched 2026-11-07; bundle/NSIS keys re-fetched 2026-11-08. Capability and event pages were checked against their "Last updated" stamps (capabilities Nov 5 2026, calling-frontend Sep 9 2026).
 
 - https://v2.tauri.app/reference/config/ (WindowConfig, AppConfig, top-level keys)
 - https://v2.tauri.app/security/capabilities/
@@ -230,5 +254,9 @@ Fetched 2026-11-07. Capability and event pages were checked against their "Last 
 - https://v2.tauri.app/develop/debug/
 - https://v2.tauri.app/develop/tests/mocking/
 - https://docs.rs/tauri/latest/tauri/webview/struct.WebviewWindow.html (method existence, version 2.12.5)
+- https://v2.tauri.app/reference/config/#bundleconfig (publisher, shortDescription, copyright, category)
+- https://v2.tauri.app/reference/config/#nsisconfig (`installMode`, `installerHooks`)
+- https://v2.tauri.app/distribute/windows-installer/ (hooks, currentUser)
+- https://docs.rs/tauri/latest/tauri/menu/struct.CheckMenuItem.html (`with_id`, `set_checked`, `Clone`; version 2.12.5)
 
 Not verifiable from the docs (marked **[Fiore]** above): transparent page CSS, non-focusable window input behavior, tray lifetime, event-before-listen race handling.
