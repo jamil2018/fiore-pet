@@ -10,8 +10,8 @@ if (platform === "windows" || platform === "mac") {
   }
   hint.textContent =
     platform === "windows"
-      ? "v0.3.1 · Windows 10/11 x64"
-      : "v0.3.1 · Mac universal preview";
+      ? "v0.3.2 · Windows 10/11 x64"
+      : "v0.3.2 · Mac universal preview";
 } else {
   hint.textContent = "Available for Windows and macOS desktops.";
 }
