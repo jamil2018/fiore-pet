@@ -13,6 +13,10 @@ The older v0.2.0 Mac preview lacks these sensors. [Mac sensor CI](../.github/wor
 
 The [README installation notes](../README.md#installation) own the signing disclosure and user-facing SmartScreen/Gatekeeper instructions; link them from each release. The Mac build configuration uses `signingIdentity: "-"`, not a Developer ID identity. No signing credentials or API keys are required by the workflow. A native Mac smoke check remains required before calling the preview runtime verified.
 
+## Brand icons
+
+The shared source for the website, desktop app and installer icon is [the Fiore cat SVG](site/assets/fiore-icon.svg). Generate platform formats with `npx tauri icon docs/site/assets/fiore-icon.svg --output .harness/handoff/brand-icons`, then replace the matching files in `src-tauri/icons/`. Keep the generated mobile folders out of the desktop project. The bundle configuration uses these PNG, ICO and ICNS assets; the tray uses the default app icon. Rebuild packages to apply icon changes—already published downloads do not change automatically.
+
 ## Local builds
 
 Use Node 22, stable Rust (at least the Cargo manifest's `rust-version`) and `npm ci`. Windows also needs the MSVC build tools and WebView2; macOS needs Xcode command-line tools.
