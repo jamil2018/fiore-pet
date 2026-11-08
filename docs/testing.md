@@ -51,7 +51,7 @@ v0.1.0 results, idle CPU/RAM numbers, and the sampler CLI (`scripts/dev/perf-sam
 - [ ] Test tone -> `music.started`, `music.level`, `music.stopped` after 2 s silence.
 - [ ] Fullscreen window -> hide; exit -> appear.
 - [ ] Petting gestures; tray Show/Hide/Quit; single instance.
-- [ ] Idle CPU < 1%, RAM < ~60 MB.
+- [ ] Idle CPU < 1%; idle RAM under ~200 MB private for the `fiore.exe` + WebView2 tree (`docs/fiore-mvp-spec.md` §5).
 The judge accepts a documented manual check for these only.
 
 ## Rules

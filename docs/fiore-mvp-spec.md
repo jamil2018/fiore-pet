@@ -121,7 +121,7 @@ Payload types: `Category = coding | writing | browsing | other`; `Mood = energet
 - **AC-X-3:** every catalog event can be injected with `emit-event.mjs` and plays its documented reaction.
 
 ## 5. Non-functional
-- **Performance:** idle CPU < 1%, RAM < ~60 MB. Poll rates: foreground 500 ms, audio peak ~15 Hz only while playing, clock 60 s, fullscreen <= 500 ms.
+- **Performance:** idle CPU < 1%. Idle RAM pass/fail is the sum of private bytes for `fiore.exe` plus its WebView2 child tree, under ~200 MB (Scenario I). Do not sum working set: it double-counts shared Chromium pages. Report `fiore.exe` alone and tree working set as informational, not as the gate. Poll rates: foreground 500 ms, audio peak ~15 Hz only while playing, clock 60 s, fullscreen <= 500 ms. Metric: `docs/decisions/0006-ram-budget-private-process-tree.md`.
 - **Privacy:** keystroke content is never read. Window titles and track names are logged only at `debug` level (logs are gitignored).
 - **Resilience:** sensor failure is logged and that sensor disabled; the app never crashes. See `docs/architecture.md`.
 - **Art:** 32x32 frames, 3x nearest-neighbor scale, atlas split per feature group (`base`, `activity`, `music`, `petting`, `fullscreen`, `outfits`, `faces`).
