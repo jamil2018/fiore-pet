@@ -217,6 +217,7 @@ if ($WarmupSec -gt 0) {
 }
 
 Assert-RootAlive
+$sampleTarget = [int][Math]::Floor($DurationSec / [double]$IntervalSec)
 $treeIds = @(Get-ProcessTreeIds $rootId)
 $prevCpu = Get-CpuSecondsByPid $treeIds
 $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -228,8 +229,7 @@ $treePrivateSamples = New-Object System.Collections.Generic.List[double]
 $treeWsSamples = New-Object System.Collections.Generic.List[double]
 $lastTreeIds = $treeIds
 
-$deadline = [DateTime]::UtcNow.AddSeconds($DurationSec)
-while ([DateTime]::UtcNow -lt $deadline) {
+for ($n = 0; $n -lt $sampleTarget; $n++) {
   Start-Sleep -Seconds $IntervalSec
   Assert-RootAlive
   $elapsed = $sw.Elapsed.TotalSeconds
