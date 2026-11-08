@@ -42,7 +42,7 @@
         "type": "app.category_changed",
         "payload": { "category": "other", "process": "explorer.exe", "title": "desktop" }
       },
-      "expect": { "body": "idle", "accessory": null, "move": "wander" }
+      "expect": { "body": "idle", "accessory": null, "move": "stay" }
     },
     {
       "at": 400,

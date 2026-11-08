@@ -67,6 +67,10 @@ pub enum FioreEvent {
     FullscreenEntered {},
     #[serde(rename = "fullscreen.exited")]
     FullscreenExited {},
+    #[serde(rename = "pet.drag_start")]
+    PetDragStart {},
+    #[serde(rename = "pet.drag_end")]
+    PetDragEnd {},
     #[serde(rename = "pet.hover_start")]
     PetHoverStart {},
     #[serde(rename = "pet.stroke")]
@@ -121,7 +125,7 @@ mod tests {
             .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("json"))
             .collect();
         files.sort();
-        assert_eq!(files.len(), 14, "expected one fixture per catalog event");
+        assert_eq!(files.len(), 16, "expected one fixture per catalog event");
         for path in files {
             let text = fs::read_to_string(&path).unwrap();
             let original: serde_json::Value = serde_json::from_str(&text).unwrap();

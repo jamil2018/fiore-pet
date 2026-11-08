@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Resolution } from '../behavior/types';
-import { createAnimator, frameIndex } from './animator';
+import { createAnimator, createSpeechBubble, frameIndex } from './animator';
 import { type AnimationDef, type MergedAtlas, mergeAtlases, rememberSprite } from './atlas';
 
 const pet = {} as CanvasImageSource;
@@ -10,7 +10,7 @@ function anim(partial: AnimationDef): AnimationDef {
   return partial;
 }
 
-function atlas(): MergedAtlas {
+function atlas(articulated = false): MergedAtlas {
   return mergeAtlases([
     {
       version: 1,
@@ -22,6 +22,7 @@ function atlas(): MergedAtlas {
           image: 'pet.png',
           animations: {
             idle: anim({
+              ...(articulated ? { motionSplit: 16 } : {}),
               row: 0,
               start: 0,
               count: 4,
@@ -110,15 +111,27 @@ function resolution(partial: Partial<Resolution> = {}): Resolution {
 
 interface Recorded {
   draws: number[][];
+  transforms: number[][];
+  restores: number;
   clears: number;
   smoothing: boolean;
 }
 
 function fakeCanvas(): { canvas: HTMLCanvasElement; recorded: Recorded } {
-  const recorded: Recorded = { draws: [], clears: 0, smoothing: true };
+  const recorded: Recorded = { draws: [], transforms: [], restores: 0, clears: 0, smoothing: true };
   let width = 0;
   let height = 0;
   const ctx = {
+    save() {},
+    restore() {
+      recorded.restores += 1;
+    },
+    translate(x: number, y: number) {
+      recorded.transforms.push([x, y]);
+    },
+    scale(x: number, y: number) {
+      recorded.transforms.push([x, y]);
+    },
     get imageSmoothingEnabled() {
       return recorded.smoothing;
     },
@@ -181,7 +194,83 @@ describe('frameIndex', () => {
   });
 });
 
+describe('speech bubble', () => {
+  it('uses literal text, a fixed music icon and overflow-only scrolling', () => {
+    const cancel = vi.fn();
+    const nodes: ReturnType<typeof element>[] = [];
+    function element() {
+      return {
+        style: {},
+        hidden: false,
+        textContent: '',
+        scrollWidth: 60,
+        clientWidth: 100,
+        setAttribute: vi.fn(),
+        append: vi.fn(),
+        animate: vi.fn(() => ({ cancel })),
+      };
+    }
+    const canvas = {
+      style: {},
+      removeAttribute: vi.fn(),
+      after: vi.fn(),
+      ownerDocument: {
+        createElement: () => {
+          const node = element();
+          nodes.push(node);
+          return node;
+        },
+      },
+    };
+    const render = createSpeechBubble(canvas as unknown as HTMLCanvasElement);
+    const [bubble, icon, viewport, label] = nodes;
+    if (!bubble || !icon || !viewport || !label) throw new Error('missing banner nodes');
+    render(resolution({ bubble: 'Short song' }));
+    expect(icon.textContent).toBe('♫');
+    expect(icon.hidden).toBe(false);
+    expect(label.animate).not.toHaveBeenCalled();
+    expect(canvas.removeAttribute).toHaveBeenCalledWith('title');
+    label.scrollWidth = 300;
+    render(resolution({ bubble: '<img src=x onerror=alert(1)>' }));
+    expect(label.textContent).toBe('<img src=x onerror=alert(1)>');
+    expect(label.animate).toHaveBeenCalledTimes(1);
+    expect(label.animate.mock.calls[0]).toEqual([
+      [
+        { transform: 'translateX(0)', offset: 0 },
+        { transform: 'translateX(0)', offset: 0.15 },
+        { transform: 'translateX(-200px)', offset: 0.85 },
+        { transform: 'translateX(-200px)', offset: 1 },
+      ],
+      { duration: 2800, iterations: Infinity, direction: 'alternate' },
+    ]);
+    render(resolution({ bubble: '<img src=x onerror=alert(1)>' }));
+    expect(label.animate).toHaveBeenCalledTimes(1);
+    render(resolution({ bubble: null }));
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(bubble.hidden).toBe(true);
+    expect(label.textContent).toBe('');
+    label.scrollWidth = 10;
+    render(resolution({ body: 'notice' }));
+    expect(icon.hidden).toBe(true);
+    expect(label.textContent).toBe('!');
+    render(resolution({ bubble: 'song', visible: false }));
+    expect(bubble.hidden).toBe(true);
+  });
+});
+
 describe('animator', () => {
+  it('moves the head region while the lower body remains planted', () => {
+    rememberSprite('pet.png', pet);
+    const view = fakeCanvas();
+    const animator = createAnimator(view.canvas, atlas(true));
+    const frame = resolution({ body: 'idle', overlay: 'headbob', overlayLevel: 1 });
+    animator.render(frame, 0);
+    animator.render(frame, 100);
+    expect(view.recorded.draws.slice(-2)).toEqual([
+      [0, 16, 32, 16, 0, 48, 96, 48],
+      [0, 0, 32, 16, 0, -12, 96, 48],
+    ]);
+  });
   it('draws body, outfit, face, accessory in that order with nearest-neighbor scaling', () => {
     rememberSprite('pet.png', pet);
     const { canvas, recorded } = fakeCanvas();
@@ -230,7 +319,7 @@ describe('animator', () => {
     animator.render(frame, 0);
     // overlayLevel 0 plays headbob at 0.75x, so frame 1 lands at 167ms, not 125ms.
     animator.render(frame, 167);
-    expect(view.recorded.draws[2]).toEqual([0, 0, 32, 32, 0, 0, 96, 96]);
+    expect(view.recorded.draws[2]).toEqual([0, 0, 32, 32, 0, -6, 96, 96]);
     expect(view.recorded.draws[3]).toEqual([0, 128, 32, 32, 0, -6, 96, 96]);
   });
 
@@ -240,9 +329,16 @@ describe('animator', () => {
     const animator = createAnimator(view.canvas, atlas());
     animator.render(resolution({ body: 'walk', accessory: 'headphones', facing: 'left' }), 0);
     expect(view.recorded.draws).toEqual([
-      [0, 32, 32, 32, 96, 0, -96, 96],
-      [32, 224, 32, 32, 90, 0, -96, 96],
+      [0, 32, 32, 32, 0, 0, 96, 96],
+      [32, 224, 32, 32, 6, 0, 96, 96],
     ]);
+    expect(view.recorded.transforms).toEqual([
+      [96, 0],
+      [-1, 1],
+      [96, 0],
+      [-1, 1],
+    ]);
+    expect(view.recorded.restores).toBe(2);
   });
 
   it('speeds the overlay with overlayLevel and doubles headbob y at 0.6', () => {
@@ -298,6 +394,31 @@ describe('animator', () => {
     expect(view.recorded.clears).toBe(1);
     animator.render(resolution(), 5000);
     expect(view.recorded.draws).toEqual([[0, 0, 32, 32, 0, 0, 96, 96]]);
+  });
+
+  it('finishes a one-shot before its engine deadline even with sleepy speed', () => {
+    rememberSprite('pet.png', pet);
+    const view = fakeCanvas();
+    const animator = createAnimator(view.canvas, atlas());
+    const frame = resolution({ body: 'jump', speed: 0.7 });
+    animator.render(frame, 0);
+    animator.render(frame, 999);
+    expect(view.recorded.draws.at(-1)?.[0]).toBe(96);
+  });
+
+  it('keeps authored overlays attached to the body during music bobbing', () => {
+    rememberSprite('pet.png', pet);
+    const view = fakeCanvas();
+    const animator = createAnimator(view.canvas, atlas());
+    const frame = resolution({
+      body: 'walk',
+      face: 'content',
+      overlay: 'headbob',
+      overlayLevel: 1,
+    });
+    animator.render(frame, 0);
+    animator.render(frame, 100);
+    expect(view.recorded.draws.slice(-2).map((draw) => draw[5])).toEqual([-12, -12]);
   });
 
   it('logs a missing overlay once and skips a missing bitmap', () => {

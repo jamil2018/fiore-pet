@@ -2,31 +2,48 @@
   "version": 1,
   "group": "outfits",
   "frame": {
-    "w": 32,
-    "h": 32
+    "w": 48,
+    "h": 48
   },
   "sheets": [
     {
       "layer": "body",
-      "image": "base.png",
+      "image": "outfits.png",
       "animations": {
         "twirl": {
-          "row": 14,
+          "row": 0,
           "start": 0,
-          "count": 4,
-          "fps": 10,
+          "count": 8,
+          "fps": 8,
           "loop": false,
+          "motionSplit": 32,
           "headOffset": [
             [
-              -3,
+              0,
               0
+            ],
+            [
+              -1,
+              -1
+            ],
+            [
+              -3,
+              -1
+            ],
+            [
+              0,
+              -3
             ],
             [
               3,
               -1
             ],
             [
-              -2,
+              2,
+              0
+            ],
+            [
+              0,
               0
             ],
             [
@@ -39,71 +56,796 @@
     },
     {
       "layer": "outfit",
-      "image": "base.png",
+      "image": "outfits.png",
       "variant": "winter",
       "animations": {
-        "*": {
+        "idle": {
+          "row": 1,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "walk": {
+          "row": 2,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "sit": {
+          "row": 3,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "notice": {
+          "row": 4,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "jump": {
+          "row": 5,
+          "start": 0,
+          "count": 8,
+          "fps": 13.333333333333334,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "code": {
+          "row": 6,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "think": {
+          "row": 7,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "write": {
+          "row": 8,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "browse": {
+          "row": 9,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "dance": {
+          "row": 10,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "headbob": {
+          "row": 11,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "lean": {
+          "row": 12,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "happy": {
+          "row": 13,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "wag": {
+          "row": 14,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "hide": {
+          "row": 15,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "appear": {
           "row": 16,
           "start": 0,
-          "count": 1,
-          "fps": 1,
-          "loop": true
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "twirl": {
+          "row": 17,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "stretch": {
+          "row": 18,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "yawn": {
+          "row": 19,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
         }
       }
     },
     {
       "layer": "outfit",
-      "image": "base.png",
+      "image": "outfits.png",
       "variant": "spring",
       "animations": {
-        "*": {
-          "row": 16,
-          "start": 1,
-          "count": 1,
-          "fps": 1,
-          "loop": true
+        "idle": {
+          "row": 20,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "walk": {
+          "row": 21,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "sit": {
+          "row": 22,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "notice": {
+          "row": 23,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "jump": {
+          "row": 24,
+          "start": 0,
+          "count": 8,
+          "fps": 13.333333333333334,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "code": {
+          "row": 25,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "think": {
+          "row": 26,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "write": {
+          "row": 27,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "browse": {
+          "row": 28,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "dance": {
+          "row": 29,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "headbob": {
+          "row": 30,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "lean": {
+          "row": 31,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "happy": {
+          "row": 32,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "wag": {
+          "row": 33,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "hide": {
+          "row": 34,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "appear": {
+          "row": 35,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "twirl": {
+          "row": 36,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "stretch": {
+          "row": 37,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "yawn": {
+          "row": 38,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
         }
       }
     },
     {
       "layer": "outfit",
-      "image": "base.png",
+      "image": "outfits.png",
       "variant": "summer",
       "animations": {
-        "*": {
-          "row": 16,
-          "start": 2,
-          "count": 1,
-          "fps": 1,
-          "loop": true
+        "idle": {
+          "row": 39,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "walk": {
+          "row": 40,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "sit": {
+          "row": 41,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "notice": {
+          "row": 42,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "jump": {
+          "row": 43,
+          "start": 0,
+          "count": 8,
+          "fps": 13.333333333333334,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "code": {
+          "row": 44,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "think": {
+          "row": 45,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "write": {
+          "row": 46,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "browse": {
+          "row": 47,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "dance": {
+          "row": 48,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "headbob": {
+          "row": 49,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "lean": {
+          "row": 50,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "happy": {
+          "row": 51,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "wag": {
+          "row": 52,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "hide": {
+          "row": 53,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "appear": {
+          "row": 54,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "twirl": {
+          "row": 55,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "stretch": {
+          "row": 56,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "yawn": {
+          "row": 57,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
         }
       }
     },
     {
       "layer": "outfit",
-      "image": "base.png",
+      "image": "outfits.png",
       "variant": "autumn",
       "animations": {
-        "*": {
-          "row": 16,
-          "start": 3,
-          "count": 1,
-          "fps": 1,
-          "loop": true
+        "idle": {
+          "row": 58,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "walk": {
+          "row": 59,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "sit": {
+          "row": 60,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "notice": {
+          "row": 61,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "jump": {
+          "row": 62,
+          "start": 0,
+          "count": 8,
+          "fps": 13.333333333333334,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "code": {
+          "row": 63,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "think": {
+          "row": 64,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "write": {
+          "row": 65,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "browse": {
+          "row": 66,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "dance": {
+          "row": 67,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "headbob": {
+          "row": 68,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "lean": {
+          "row": 69,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "happy": {
+          "row": 70,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "wag": {
+          "row": 71,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "hide": {
+          "row": 72,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "appear": {
+          "row": 73,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "twirl": {
+          "row": 74,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "stretch": {
+          "row": 75,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "yawn": {
+          "row": 76,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
         }
       }
     },
     {
       "layer": "outfit",
-      "image": "base.png",
+      "image": "outfits.png",
       "variant": "summer_glasses",
       "animations": {
-        "*": {
-          "row": 16,
-          "start": 4,
-          "count": 1,
-          "fps": 1,
-          "loop": true
+        "idle": {
+          "row": 77,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "walk": {
+          "row": 78,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "sit": {
+          "row": 79,
+          "start": 0,
+          "count": 8,
+          "fps": 4,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "notice": {
+          "row": 80,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "jump": {
+          "row": 81,
+          "start": 0,
+          "count": 8,
+          "fps": 13.333333333333334,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "code": {
+          "row": 82,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "think": {
+          "row": 83,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "write": {
+          "row": 84,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "browse": {
+          "row": 85,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "dance": {
+          "row": 86,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "headbob": {
+          "row": 87,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "lean": {
+          "row": 88,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "happy": {
+          "row": 89,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": true,
+          "motionSplit": 30
+        },
+        "wag": {
+          "row": 90,
+          "start": 0,
+          "count": 8,
+          "fps": 10,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "hide": {
+          "row": 91,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "appear": {
+          "row": 92,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "twirl": {
+          "row": 93,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "stretch": {
+          "row": 94,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
+        },
+        "yawn": {
+          "row": 95,
+          "start": 0,
+          "count": 8,
+          "fps": 8,
+          "loop": false,
+          "motionSplit": 30
         }
       }
     }

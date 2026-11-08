@@ -3,7 +3,7 @@ import type { Resolution, Rng } from './behavior/types';
 import { selectBridge } from './bridge';
 import { createMover } from './interaction/mover';
 import { createPettingDetector } from './interaction/petting';
-import { createAnimator } from './render/animator';
+import { createAnimator, createSpeechBubble } from './render/animator';
 import { browserImageLoader, loadAtlases, SPRITE_GROUPS } from './render/atlas';
 
 /** ~15 fps. One-shots and speech bubbles advance without a 60 Hz loop. */
@@ -31,6 +31,7 @@ async function main(): Promise<void> {
   });
   const engine = createEngine({ rng, oneShotMs: {} });
   const animator = createAnimator(canvas, atlas);
+  const renderBubble = createSpeechBubble(canvas);
   const mover = createMover(bridge);
 
   let timer: number | null = null;
@@ -61,7 +62,7 @@ async function main(): Promise<void> {
 
   function present(resolution: Resolution, now: number): void {
     animator.render(resolution, now);
-    mover.apply(resolution);
+    renderBubble(resolution);
     syncWindow(resolution.visible);
     if (resolution.visible) scheduleLoop();
     else stopLoop();
@@ -73,10 +74,14 @@ async function main(): Promise<void> {
     present(engine.handle({ kind: 'tick', now }), now);
   }
 
-  createPettingDetector(canvas, (event) => {
-    const now = performance.now();
-    present(engine.handle({ kind: 'event', event, now }), now);
-  });
+  createPettingDetector(
+    canvas,
+    (event) => {
+      const now = performance.now();
+      present(engine.handle({ kind: 'event', event, now }), now);
+    },
+    { startDragging: () => mover.startDragging() },
+  );
 
   await bridge.subscribe((event) => {
     const now = performance.now();

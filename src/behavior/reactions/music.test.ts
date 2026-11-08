@@ -132,7 +132,7 @@ describe('music reaction', () => {
       overlay: null,
       overlayLevel: 0,
       bubble: null,
-      move: 'wander',
+      move: 'stay',
     });
   });
 });

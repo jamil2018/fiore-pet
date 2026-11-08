@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FioreEvent } from '../events';
 import { createPettingDetector, createStrokeTracker, type StrokeTracker } from './petting';
@@ -87,8 +87,15 @@ describe('createStrokeTracker', () => {
   });
 });
 
+interface PointerSample {
+  clientX: number;
+  timeStamp: number;
+  button?: number;
+  buttons?: number;
+}
+
 function fakeTarget(): HTMLElement & {
-  dispatch(type: string, init: { clientX: number; timeStamp: number }): void;
+  dispatch(type: string, init: PointerSample): void;
 } {
   const listeners = new Map<string, Set<EventListener>>();
   const target = {
@@ -100,9 +107,8 @@ function fakeTarget(): HTMLElement & {
     removeEventListener(type: string, listener: EventListener) {
       listeners.get(type)?.delete(listener);
     },
-    dispatch(type: string, init: { clientX: number; timeStamp: number }) {
-      // Listeners only read clientX and timeStamp, so the fake is not a full Event.
-      const event = { clientX: init.clientX, timeStamp: init.timeStamp } as unknown as Event;
+    dispatch(type: string, init: PointerSample) {
+      const event = { button: 0, buttons: 0, preventDefault() {}, ...init } as unknown as Event;
       for (const listener of [...(listeners.get(type) ?? [])]) listener(event);
     },
   };
@@ -110,6 +116,87 @@ function fakeTarget(): HTMLElement & {
 }
 
 describe('createPettingDetector', () => {
+  it('ac_win_2_primary dragging ends hover and suppresses strokes until completion', async () => {
+    const target = fakeTarget();
+    const emitted: FioreEvent[] = [];
+    let finish: (() => void) | undefined;
+    const drag = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    createPettingDetector(target, (event) => emitted.push(event), { startDragging: drag });
+    target.dispatch('pointerenter', { clientX: 0, timeStamp: 0 });
+    target.dispatch('pointerdown', { clientX: 0, timeStamp: 1, buttons: 1 });
+    target.dispatch('pointerdown', { clientX: 0, timeStamp: 2, buttons: 1 });
+    for (const x of [0, 40, 28, 40, 28])
+      target.dispatch('pointermove', { clientX: x, timeStamp: 3, buttons: 1 });
+    target.dispatch('pointermove', { clientX: 12, timeStamp: 4 });
+    expect(drag).toHaveBeenCalledTimes(1);
+    expect(emitted.map((event) => event.type)).toEqual([
+      'pet.hover_start',
+      'pet.hover_end',
+      'pet.drag_start',
+    ]);
+    finish?.();
+    await Promise.resolve();
+    for (const x of [0, 40, 28, 40, 28])
+      target.dispatch('pointermove', { clientX: x, timeStamp: 10 });
+    expect(emitted.map((event) => event.type)).toEqual([
+      'pet.hover_start',
+      'pet.hover_end',
+      'pet.drag_start',
+      'pet.drag_end',
+      'pet.hover_start',
+      'pet.stroke',
+      'pet.stroke',
+      'pet.stroke',
+      'pet.petted',
+    ]);
+  });
+
+  it('ignores non-primary dragging and resets hover on pointer cancellation', () => {
+    const target = fakeTarget();
+    const emitted: FioreEvent[] = [];
+    const drag = vi.fn(async () => {});
+    const stop = createPettingDetector(target, (event) => emitted.push(event), {
+      startDragging: drag,
+    });
+    target.dispatch('pointerenter', { clientX: 0, timeStamp: 0 });
+    target.dispatch('pointerdown', { clientX: 0, timeStamp: 1, button: 2, buttons: 2 });
+    target.dispatch('pointercancel', { clientX: 0, timeStamp: 2 });
+    expect(drag).not.toHaveBeenCalled();
+    expect(emitted.at(-1)?.type).toBe('pet.hover_end');
+    stop();
+    target.dispatch('pointerdown', { clientX: 0, timeStamp: 3, buttons: 1 });
+    expect(drag).not.toHaveBeenCalled();
+  });
+
+  it('restores hover after a rejected native drag without an unhandled rejection', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    try {
+      const target = fakeTarget();
+      const emitted: FioreEvent[] = [];
+      createPettingDetector(target, (event) => emitted.push(event), {
+        startDragging: async () => {
+          throw new Error('denied');
+        },
+      });
+      target.dispatch('pointerdown', { clientX: 0, timeStamp: 0, buttons: 1 });
+      await Promise.resolve();
+      target.dispatch('pointermove', { clientX: 0, timeStamp: 1 });
+      expect(emitted.map((event) => event.type)).toEqual([
+        'pet.drag_start',
+        'pet.drag_end',
+        'pet.hover_start',
+      ]);
+      expect(debug).toHaveBeenCalledTimes(1);
+    } finally {
+      debug.mockRestore();
+    }
+  });
+
   it('emits pointer strokes and cleanup drops the listeners', () => {
     const emitted: FioreEvent[] = [];
     const target = fakeTarget();

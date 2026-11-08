@@ -73,7 +73,7 @@ Feature rules stay engine-owned defaults. A reaction may add effects and contrib
 - **Rule C.** Each reaction reads `ctx.rng`, a mulberry32 stream seeded once from `config.rng` in registry order. One feature's draws do not change another's sequence, or the engine's `jump` and `yawn` rolls. `Resolution.facing` defaults to `right` and `Resolution.overlayLevel` defaults to `0`; both use the same tier rank as the other fields.
 
 ### Sprites
-Atlas per group: `public/sprites/<group>.png` + `.json`; loader merges at startup. All layers share the 32x32 grid and anchor. Reference: `docs/reference/sprite-atlas.md`.
+Atlas per group: `public/sprites/<group>.png` + `.json`; loader merges at startup. All layers share the grid and anchor defined in `docs/reference/sprite-atlas.md`.
 
 ## Threading
 - **Main thread:** Tauri runtime, window, tray.

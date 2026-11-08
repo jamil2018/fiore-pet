@@ -19,6 +19,10 @@ export const pettingReaction = defineReaction<PettingSlice>({
       'state.snapshot': () => resting(),
       'fullscreen.entered': () => resting(),
       'fullscreen.exited': () => slice,
+      'pet.drag_start': () => resting(),
+
+      'pet.drag_end': () => resting(),
+
       'pet.hover_start': () => ({ hovering: true, facing: null }),
       'pet.stroke': (stroke) =>
         slice.hovering ? { hovering: true, facing: stroke.payload.direction } : slice,

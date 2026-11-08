@@ -63,7 +63,7 @@
         "type": "app.category_changed",
         "payload": { "category": "other", "process": "explorer.exe", "title": "desktop" }
       },
-      "expect": { "body": "idle", "outfit": "summer", "accessory": null, "move": "wander" }
+      "expect": { "body": "idle", "outfit": "summer", "accessory": null, "move": "stay" }
     }
   ]
 }

@@ -9,12 +9,13 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 ## Rust backend (`src-tauri/`)
 - `src-tauri/Cargo.toml`: crate deps, `windows` feature flags, clippy lints.
 - `src-tauri/tauri.conf.json`: window (transparent, frameless, always-on-top, skip-taskbar), bundle/NSIS config.
+- `src-tauri/tauri.macos.conf.json`: experimental macOS app/DMG packaging override.
 - `src-tauri/capabilities/default.json`: minimal Tauri v2 permissions.
 - `src-tauri/src/main.rs`: binary entry; calls `fiore_lib::run()`.
 - `src-tauri/src/lib.rs`: composition root; plugins, logging, window, hub, commands. Contract file.
 - `src-tauri/src/events.rs`: `FioreEvent` serde enum (all catalog events), payload types, serde tests. Contract file.
 - `src-tauri/src/hub.rs`: `EventHub`; registers sensors, spawns threads, dedupes, emits `fiore://event`, sends `state.snapshot`. Contract file.
-- `src-tauri/src/window.rs`: window setup, tray (Show/Hide, Start with Windows, Quit), single instance, initial placement (not a position command; wander uses `bridge.window.setPosition`).
+- `src-tauri/src/window.rs`: window setup, platform-aware tray, single instance, initial placement and mouse-release completion for native dragging.
 - `src-tauri/src/logging.rs`: `tracing` JSON lines to `logs/fiore-dev.log`, `RUST_LOG` filter.
 - `src-tauri/src/debug.rs`: dev-only `emit_debug_event` command and loopback TCP injector (event injection for `emit-event.mjs`, debug panel).
 - `src-tauri/src/window/autostart.rs`: tray "Start with Windows" toggle (`tauri-plugin-autostart`).
@@ -34,7 +35,7 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src/bridge/tauri.ts`: listens to `fiore://event`, wraps debug command.
 - `src/bridge/mock.ts`: fake bridge for browser `dev:mock`, scripted/manual events.
 - `src/behavior/types.ts`: engine input/output types (`Resolution`, layer/animation name constants, reaction shape). Contract file.
-- `src/behavior/engine.ts`: pure priority/layering resolver.
+- `src/behavior/engine.ts`: pure priority/layering resolver, drag walk/settling states and compatible music/activity composition.
 - `src/behavior/golden.test.ts`: golden replay runner.
 - `src/behavior/golden/*.json`: golden replay cases (see `docs/testing.md`).
 - `src/behavior/golden/events/*.json`: shared serde fixtures, one file per catalog event.
@@ -45,22 +46,24 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src/behavior/reactions/music.ts`: smoothed `music.level` overlay while playing.
 - `src/behavior/reactions/mood.ts`: face, speed, stretch, and yawn stay engine-owned.
 - `src/behavior/reactions/season.ts`: outfit and twirl stay engine-owned.
-- `src/render/animator.ts`: layered sprite animator (canvas, 3x nearest-neighbor, frame timing).
+- `src/render/animator.ts`: layered sprite animator (96px canvas, native-grid nearest-neighbor scale, articulated music motion, frame timing), rounded notice/track-title bubble with music icon and overflow marquee.
 - `src/render/atlas.ts`: loads and merges `public/sprites/<group>.json` atlases, schema validation.
-- `src/interaction/mover.ts`: `WindowMover` (wander, `setPosition`).
-- `src/interaction/petting.ts`: pointer hover, stroke, and petted detector emitting `pet.*`.
+- `src/interaction/mover.ts`: user-requested native window dragging; no automatic movement or timers.
+- `src/interaction/petting.ts`: pointer hover/stroke detector emitting `pet.*`; primary-button drag handoff suspends petting.
 - `src/debug/panel.ts`: dev-only panel that fires fake events.
 
 ## Sprites (`public/sprites/`, `<group>.png` + `<group>.json` each)
-- `public/sprites/base.*`: body idle, walk, sit, notice, jump. Frozen after the W2.0 contract. Other groups may still reference `base.png`.
-- `public/sprites/activity.*`: body code, think, write, browse on `activity.png`; accessories laptop, notepad, tablet on `base.png`.
-- `public/sprites/music.*`: body dance, headbob; accessory headphones. Image stays `base.png`.
-- `public/sprites/petting.*`: body lean, happy, wag; face happy. Image stays `base.png`.
-- `public/sprites/fullscreen.*`: body hide, appear. Image stays `base.png`.
-- `public/sprites/outfits.*`: seasonal outfits and body twirl. Image stays `base.png`.
-- `public/sprites/faces.*`: mood faces and body stretch, yawn. Image stays `base.png`.
+- `public/sprites/base.*`: body idle, walk, sit, notice, jump; regenerated under the user-authorized W31 redesign deviation.
+- `public/sprites/activity.*`: body code, think, write, browse; aligned laptop, notepad, tablet accessories.
+- `public/sprites/music.*`: body dance, headbob; aligned headphones.
+- `public/sprites/petting.*`: body lean, happy, wag.
+- `public/sprites/fullscreen.*`: body hide, appear.
+- `public/sprites/outfits.*`: frame-authored seasonal outfits and body twirl.
+- `public/sprites/faces.*`: frame-authored mood/happy faces and body stretch, yawn.
+- `public/sprites/preview.html`, `public/sprites/preview.png`, `public/sprites/showcase.png`: generated motion gallery and composite artwork previews.
 
 ## Dev tools (`scripts/dev/`)
+- `scripts/dev/generate-sprites.mjs`: deterministic artwork source; rebuilds seven RGBA atlases, metadata, and the motion gallery without dependencies.
 - `scripts/dev/emit-event.mjs`: inject a `FioreEvent` into the running dev app.
 - `scripts/dev/sim/start-notepad.ps1`: simulate `writing` activity.
 - `scripts/dev/sim/play-test-tone.ps1`: play bundled audio so GSMTC sees media.
@@ -70,5 +73,6 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `scripts/dev/perf-sample.ps1`: idle CPU% and RAM sampler for `fiore.exe` plus the WebView2 process tree.
 
 ## Config (repo root)
+- `.github/workflows/release.yml`: Windows and macOS universal artifact builds, provenance and checksums; publication procedure lives in `docs/releasing.md`.
 - `package.json`, `vite.config.ts`, `tsconfig.json`, `biome.json`, `rustfmt.toml`: tooling configs (`dev`, `dev:mock`, `test`, `build` scripts).
 - `index.html`: Vite entry page, canvas mount.

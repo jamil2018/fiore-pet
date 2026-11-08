@@ -4,6 +4,7 @@ import {
   type AnimationDef,
   AtlasError,
   type AtlasFile,
+  loadAtlases,
   mergeAtlases,
   parseAtlas,
   validateImage,
@@ -40,6 +41,44 @@ const baseJson = {
 };
 
 describe('atlas loader', () => {
+  it('accepts 48px artwork and rejects mixing grids', () => {
+    const large = parseAtlas({ ...baseJson, frame: { w: 48, h: 48 } }, 'base');
+    expect(mergeAtlases([large]).body('idle').frameSize).toBe(48);
+    expect(() => mergeAtlases([large, bodyFile({ walk: idle() })])).toThrow(/mixed frame/);
+    const sheet = large.sheets[0];
+    if (!sheet) throw new Error('missing fixture sheet');
+    expect(() => validateImage(sheet, { width: 128, height: 48 }, 48)).toThrow(/too small/);
+  });
+
+  it('rejects a motion split outside the frame', () => {
+    const value = bodyFile({ idle: { ...idle(), motionSplit: 33 } });
+    expect(() => parseAtlas(value, 'base')).toThrow(/motionSplit/);
+  });
+  it('decodes a shared bitmap once across multiple layers', async () => {
+    const loaded: string[] = [];
+    const faceSheet = {
+      layer: 'face',
+      image: 'base.png',
+      variant: 'content',
+      animations: { '*': idle(1) },
+    };
+    await loadAtlases({
+      groups: ['base'],
+      fetchJson: async () => ({ ...baseJson, sheets: [...baseJson.sheets, faceSheet] }),
+      loadImage: async (name) => {
+        loaded.push(name);
+        return { width: 128, height: 32 };
+      },
+      log: () => {},
+    });
+    expect(loaded).toEqual(['base.png']);
+  });
+
+  it('rejects infinite playback rates', () => {
+    expect(() => parseAtlas(bodyFile({ idle: { ...idle(), fps: Infinity } }), 'base')).toThrow(
+      /fps/,
+    );
+  });
   it('rejects a bad version, a group mismatch, and an unknown animation', () => {
     expect(() => parseAtlas({ ...baseJson, version: 2 }, 'base')).toThrow(AtlasError);
     expect(() => parseAtlas({ ...baseJson, group: 'other' }, 'base')).toThrow(AtlasError);

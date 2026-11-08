@@ -9,6 +9,10 @@ const SHOW_ID: &str = "show";
 const HIDE_ID: &str = "hide";
 const AUTOSTART_ID: &str = "autostart";
 const QUIT_ID: &str = "quit";
+#[cfg(target_os = "macos")]
+const AUTOSTART_LABEL: &str = "Start at login";
+#[cfg(not(target_os = "macos"))]
+const AUTOSTART_LABEL: &str = "Start with Windows";
 
 /// Inset from the work-area edges when the pet is first placed, in logical pixels.
 pub const EDGE_MARGIN_PX: i32 = 16;
@@ -159,7 +163,7 @@ fn install_tray<R: Runtime>(app: &App<R>, autostart_ready: bool) -> Result<(), W
     let autostart = CheckMenuItem::with_id(
         app,
         AUTOSTART_ID,
-        "Start with Windows",
+        AUTOSTART_LABEL,
         autostart_ready,
         autostart_checked,
         None::<&str>,
@@ -387,4 +391,49 @@ mod tests {
         assert!(physical_to_logical(area, f64::NAN).is_err());
         assert!(physical_to_logical(area, f64::INFINITY).is_err());
     }
+}
+
+/// Native start_dragging only queues the move. Wait off the UI thread for release.
+/// Reads only the primary mouse button, never keyboard input or its contents.
+#[tauri::command]
+pub async fn wait_for_drag_release() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        #[cfg(any(windows, target_os = "macos"))]
+        {
+            use std::time::{Duration, Instant};
+            let deadline = Instant::now() + Duration::from_secs(120);
+            loop {
+                if !primary_mouse_button_pressed() {
+                    break;
+                }
+                if Instant::now() >= deadline {
+                    return Err("mouse drag timed out".to_string());
+                }
+                std::thread::sleep(Duration::from_millis(30));
+            }
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|err| err.to_string())?
+}
+
+#[cfg(windows)]
+fn primary_mouse_button_pressed() -> bool {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+    // SAFETY: valid mouse virtual-key constant; no pointers or keyboard content.
+    unsafe { GetAsyncKeyState(i32::from(VK_LBUTTON.0)) < 0 }
+}
+
+#[cfg(target_os = "macos")]
+fn primary_mouse_button_pressed() -> bool {
+    #[link(name = "CoreGraphics", kind = "framework")]
+    extern "C" {
+        fn CGEventSourceButtonState(state_id: i32, button: u32) -> bool;
+    }
+    const COMBINED_SESSION_STATE: i32 = 0;
+    const LEFT_BUTTON: u32 = 0;
+    // SAFETY: CoreGraphics accepts these defined state/button constants; no pointers
+    // or event contents are accessed, and this query is safe off the UI thread.
+    unsafe { CGEventSourceButtonState(COMBINED_SESSION_STATE, LEFT_BUTTON) }
 }

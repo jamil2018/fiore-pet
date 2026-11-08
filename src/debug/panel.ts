@@ -12,6 +12,10 @@ const SAMPLE_PAYLOADS: Record<EventType, object> = {
   },
   'fullscreen.entered': {},
   'fullscreen.exited': {},
+  'pet.drag_start': {},
+
+  'pet.drag_end': {},
+
   'pet.hover_start': {},
   'pet.stroke': { direction: 'left' },
   'pet.petted': {},

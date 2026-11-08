@@ -89,7 +89,8 @@ export interface Resolution {
   speed: number;
   bubble: string | null;
   visible: boolean;
-  move: 'stay' | 'wander';
+  /** Placement is controlled exclusively by the user's native window drag. */
+  move: 'stay';
   /** Horizontal mirror. `'right'` when no contribution sets it. */
   facing: Facing;
   /** Overlay playback weight, 0..1. `0` when no contribution sets it. */
@@ -174,6 +175,10 @@ export function switchEvent<R>(
       return arms['fullscreen.entered'](event);
     case 'fullscreen.exited':
       return arms['fullscreen.exited'](event);
+    case 'pet.drag_start':
+      return arms['pet.drag_start'](event);
+    case 'pet.drag_end':
+      return arms['pet.drag_end'](event);
     case 'pet.hover_start':
       return arms['pet.hover_start'](event);
     case 'pet.stroke':

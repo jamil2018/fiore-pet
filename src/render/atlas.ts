@@ -23,6 +23,10 @@ export interface AnimationDef {
   headOffset?: ReadonlyArray<readonly [number, number]>;
   /** Sheet file name, copied on merge so the animator can find the decoded bitmap. */
   image?: string;
+  /** Native grid size, supplied by the containing atlas when merged. */
+  frameSize?: number;
+  /** Pixels above this source row articulate with the music overlay. */
+  motionSplit?: number;
 }
 
 export interface SheetDef {
@@ -35,7 +39,7 @@ export interface SheetDef {
 export interface AtlasFile {
   version: 1;
   group: string;
-  frame: { w: 32; h: 32 };
+  frame: { w: 32 | 48; h: 32 | 48 };
   sheets: SheetDef[];
 }
 
@@ -101,7 +105,7 @@ function assertAnimation(name: string, def: AnimationDef, layer: LayerName): voi
   if (!Number.isInteger(def.row) || def.row < 0) throw new AtlasError(`bad row for ${name}`);
   if (!Number.isInteger(def.start) || def.start < 0) throw new AtlasError(`bad start for ${name}`);
   if (!Number.isInteger(def.count) || def.count < 1) throw new AtlasError(`bad count for ${name}`);
-  if (!(def.fps > 0)) throw new AtlasError(`bad fps for ${name}`);
+  if (!Number.isFinite(def.fps) || !(def.fps > 0)) throw new AtlasError(`bad fps for ${name}`);
   if (name === '*' && def.count !== 1) throw new AtlasError('* entry must have count 1');
   if (def.headOffset === undefined) return;
   if (layer !== 'body') throw new AtlasError('headOffset is body only');
@@ -117,7 +121,13 @@ function assertAnimation(name: string, def: AnimationDef, layer: LayerName): voi
 
 function readAnimation(value: unknown, layer: LayerName, name: string): AnimationDef {
   if (!isRecord(value)) throw new AtlasError(`animation ${name} is not an object`);
-  const { row, start, count, fps, loop, headOffset } = value;
+  const { row, start, count, fps, loop, headOffset, motionSplit } = value;
+  if (
+    motionSplit !== undefined &&
+    (typeof motionSplit !== 'number' || !Number.isInteger(motionSplit) || motionSplit < 0)
+  ) {
+    throw new AtlasError('bad motionSplit');
+  }
   if (
     typeof row !== 'number' ||
     typeof start !== 'number' ||
@@ -145,6 +155,7 @@ function readAnimation(value: unknown, layer: LayerName, name: string): Animatio
     fps,
     loop,
     ...(offsets ? { headOffset: offsets } : {}),
+    ...(typeof motionSplit === 'number' ? { motionSplit } : {}),
   };
   assertAnimation(name, def, layer);
   return def;
@@ -155,9 +166,14 @@ export function parseAtlas(json: unknown, group: string): AtlasFile {
   if (json.version !== 1) throw new AtlasError('version !== 1');
   if (json.group !== group)
     throw new AtlasError(`group/file mismatch: ${String(json.group)} != ${group}`);
-  if (!isRecord(json.frame) || json.frame.w !== FRAME || json.frame.h !== FRAME) {
-    throw new AtlasError('frame must be 32x32');
+  if (
+    !isRecord(json.frame) ||
+    (json.frame.w !== 32 && json.frame.w !== 48) ||
+    json.frame.h !== json.frame.w
+  ) {
+    throw new AtlasError('frame must be 32x32 or 48x48');
   }
+  const frameSize = json.frame.w;
   if (!Array.isArray(json.sheets)) throw new AtlasError('sheets must be an array');
   const sheets = json.sheets.map((sheet) => {
     if (!isRecord(sheet)) throw new AtlasError('sheet is not an object');
@@ -176,6 +192,7 @@ export function parseAtlas(json: unknown, group: string): AtlasFile {
     const animations: Record<string, AnimationDef> = {};
     for (const [name, value] of Object.entries(sheet.animations)) {
       animations[name] = readAnimation(value, layer, name);
+      if ((animations[name]?.motionSplit ?? 0) > frameSize) throw new AtlasError('bad motionSplit');
     }
     const parsed: SheetDef = {
       layer,
@@ -185,13 +202,13 @@ export function parseAtlas(json: unknown, group: string): AtlasFile {
     };
     return parsed;
   });
-  return { version: 1, group, frame: { w: FRAME, h: FRAME }, sheets };
+  return { version: 1, group, frame: { w: frameSize, h: frameSize }, sheets };
 }
 
-export function validateImage(sheet: SheetDef, size: ImageSize): void {
+export function validateImage(sheet: SheetDef, size: ImageSize, frameSize = FRAME): void {
   for (const [name, def] of Object.entries(sheet.animations)) {
-    const width = (def.start + def.count) * FRAME;
-    const height = (def.row + 1) * FRAME;
+    const width = (def.start + def.count) * frameSize;
+    const height = (def.row + 1) * frameSize;
     if (size.width < width || size.height < height) {
       throw new AtlasError(`image too small for ${sheet.layer}/${name}`);
     }
@@ -204,6 +221,7 @@ export class MergedAtlas {
   constructor(
     private readonly entries: ReadonlyMap<string, AnimationDef>,
     private readonly log: (message: string) => void,
+    readonly frameSize: number = FRAME,
   ) {}
 
   lookup(layer: LayerName, variant: string | undefined, anim: string): AnimationDef | null {
@@ -230,14 +248,17 @@ export function mergeAtlases(
   log: (message: string) => void = () => {},
 ): MergedAtlas {
   const entries = new Map<string, AnimationDef>();
+  const frameSize = files[0]?.frame.w ?? FRAME;
   for (const file of files) {
+    if (file.frame.w !== frameSize || file.frame.h !== frameSize)
+      throw new AtlasError('mixed frame sizes');
     for (const sheet of file.sheets) {
       for (const [name, def] of Object.entries(sheet.animations)) {
         const id = key(sheet.layer, sheet.variant, name);
         if (entries.has(id)) {
           throw new AtlasError(`duplicate key ${sheet.layer}/${sheet.variant ?? ''}/${name}`);
         }
-        entries.set(id, { ...def, image: sheet.image });
+        entries.set(id, { ...def, image: sheet.image, frameSize });
       }
     }
   }
@@ -251,7 +272,7 @@ export function mergeAtlases(
       throw new AtlasError(`count mismatch for ${anim}: body ${body.count}, overlay ${def.count}`);
     }
   }
-  return new MergedAtlas(entries, log);
+  return new MergedAtlas(entries, log, frameSize);
 }
 
 export interface AtlasLoaders {
@@ -268,6 +289,7 @@ function errorText(err: unknown): string {
 export async function loadAtlases(loaders: AtlasLoaders): Promise<MergedAtlas> {
   const groups = loaders.groups ?? SPRITE_GROUPS;
   const files: AtlasFile[] = [];
+  const images = new Map<string, ImageSize>();
   for (const group of groups) {
     let json: unknown;
     try {
@@ -278,8 +300,12 @@ export async function loadAtlases(loaders: AtlasLoaders): Promise<MergedAtlas> {
     }
     const file = parseAtlas(json, group);
     for (const sheet of file.sheets) {
-      const size = await loaders.loadImage(sheet.image);
-      validateImage(sheet, size);
+      let size = images.get(sheet.image);
+      if (!size) {
+        size = await loaders.loadImage(sheet.image);
+        images.set(sheet.image, size);
+      }
+      validateImage(sheet, size, file.frame.w);
       if (size.image) rememberSprite(sheet.image, size.image);
     }
     files.push(file);

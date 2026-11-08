@@ -1,42 +1,17 @@
 # Fiore
 
-A tiny pixel-art desktop pet for Windows. Fiore lives on your desktop, reacts to what you do (coding, writing, browsing, listening to music, going fullscreen), and likes being petted.
+A tiny pixel-art desktop pet that reacts to your activity and likes being petted.
+last-verified: 2026-11-08
 
-**Status:** early development. Phase 0 (agent harness) is in progress; the app itself is not built yet.
+**Status:** v0.2.0. Windows 10/11 is the full product; macOS is an experimental universal preview. See the [release guide](docs/releasing.md) for build formats, installation, signing status and Mac limitations.
 
-## Stack
+Fiore uses Tauri v2 (Rust), Vite and TypeScript, with 48x48 pixel-art sprites scaled 2x. Its reactions and platform scope are defined by the [MVP spec](docs/fiore-mvp-spec.md). Fiore never reads keystroke content, and logs are local-only.
 
-- Tauri v2 (Rust backend) + Vite + plain TypeScript frontend
-- 32x32 pixel-art sprites, scaled 3x with nearest-neighbor
-- Windows 10/11 only; ships as a standalone `.exe` and an NSIS installer
+## Development
 
-## Planned behavior
+See the [release guide](docs/releasing.md#local-builds) for prerequisites and build commands. `npm run dev:mock` runs the browser preview; `npm run tauri dev` runs the desktop app. Run `pwsh scripts/check.ps1 -Tier fast` before handoff.
 
-- Hides when an app goes fullscreen, reappears after
-- Reacts to petting (hover, strokes)
-- Changes activity by foreground app category
-- Dances / headbobs to music playing in Windows
-- Mood follows time of day; outfit follows the season
-
-Privacy: Fiore never reads keystroke content, and logs are local-only.
-
-## Repository
-
-This repo is built with a multi-agent workflow (Cursor). See [docs/harness/README.md](docs/harness/README.md) for the harness contract and [docs/glossary.md](docs/glossary.md) for terminology.
-
-Requirements for development (once the app lands): Rust (stable, MSVC), Node 20+, WebView2.
-
-## Install
-
-Windows 10/11. The NSIS installer (`Fiore_0.1.0_x64-setup.exe`) is per-user (no Administrator). It bootstraps WebView2 if the runtime is missing. A standalone `fiore.exe` is in the same release bundle.
-
-Autostart is off by default. After install, the tray menu item **Start with Windows** writes a current-user Run key; unchecking it removes the key.
-
-Silent install: `Fiore_0.1.0_x64-setup.exe /S`
-
-## Uninstall
-
-Use Windows Settings → Apps, or the uninstaller next to the installer. Uninstall removes the app files and the autostart Run value (`Fiore`) if it is still present. Leave **Start with Windows** unchecked if you are not using autostart.
+Repository workflow: [agent harness](docs/harness/README.md), [code map](docs/codemap.md), [terminology](docs/glossary.md).
 
 ## License
 

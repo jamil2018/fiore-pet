@@ -21,7 +21,7 @@
         "overlay": null,
         "overlayLevel": 0,
         "bubble": null,
-        "move": "wander"
+        "move": "stay"
       }
     },
     {
@@ -115,7 +115,7 @@
         "overlay": null,
         "overlayLevel": 0,
         "bubble": null,
-        "move": "wander"
+        "move": "stay"
       }
     }
   ]

@@ -25,6 +25,10 @@ describe('parseFioreEvent', () => {
           'state.snapshot': (item) => item.type,
           'fullscreen.entered': (item) => item.type,
           'fullscreen.exited': (item) => item.type,
+          'pet.drag_start': (item) => item.type,
+
+          'pet.drag_end': (item) => item.type,
+
           'pet.hover_start': (item) => item.type,
           'pet.stroke': (item) => item.type,
           'pet.petted': (item) => item.type,

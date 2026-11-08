@@ -1,0 +1,108 @@
+name: release artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/release-0.2.0]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CI: "true"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install Rust
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: npm ci --no-audit --no-fund
+      - name: Full gate and NSIS build
+        shell: pwsh
+        run: ./scripts/check.ps1 -Tier full
+      - name: Stage Windows artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $stage = 'release-artifacts/windows'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          $installers = @(Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe)
+          if ($installers.Count -ne 1) { throw 'Expected one NSIS installer' }
+          Copy-Item -LiteralPath $installers[0].FullName -Destination "$stage/Fiore_${version}_windows-x64-setup.exe"
+          Compress-Archive -LiteralPath src-tauri/target/release/fiore.exe -DestinationPath "$stage/Fiore_${version}_windows-x64-portable.zip"
+          Set-Content -Path "$stage/SOURCE_SHA-windows-x64.txt" -Value $env:GITHUB_SHA -Encoding utf8NoBOM
+          $hashes = Get-ChildItem $stage -File | Sort-Object Name | ForEach-Object {
+            "$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)"
+          }
+          Set-Content -Path "$stage/SHA256SUMS-windows-x64.txt" -Value $hashes -Encoding utf8NoBOM
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fiore-windows-${{ github.sha }}
+          path: release-artifacts/windows/
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install Rust and universal targets
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: npm ci --no-audit --no-fund
+      - name: Native tests and frontend build
+        run: |
+          npm test
+          npm run build
+          cargo test --locked --manifest-path src-tauri/Cargo.toml
+      - name: Build universal macOS preview
+        run: npm run tauri -- build --target universal-apple-darwin --bundles app,dmg
+      - name: Verify and stage macOS artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")
+          bundle=src-tauri/target/universal-apple-darwin/release/bundle
+          app="$bundle/macos/Fiore.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          archs=$(lipo -archs "$app/Contents/MacOS/fiore")
+          echo "Universal architectures: $archs"
+          [[ " $archs " == *" arm64 "* && " $archs " == *" x86_64 "* ]]
+          stage=release-artifacts/macos
+          mkdir -p "$stage"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "$stage/Fiore_${version}_macos-universal-preview.zip"
+          dmgs=("$bundle"/dmg/*.dmg)
+          [[ ${#dmgs[@]} -eq 1 && -f "${dmgs[0]}" ]]
+          cp "${dmgs[0]}" "$stage/Fiore_${version}_macos-universal-preview.dmg"
+          printf '%s\n' "$GITHUB_SHA" > "$stage/SOURCE_SHA-macos-universal.txt"
+          (cd "$stage" && shasum -a 256 ./*.zip ./*.dmg SOURCE_SHA-macos-universal.txt > SHA256SUMS-macos-universal.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fiore-macos-${{ github.sha }}
+          path: release-artifacts/macos/
+          if-no-files-found: error

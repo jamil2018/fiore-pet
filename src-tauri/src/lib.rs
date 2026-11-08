@@ -31,10 +31,14 @@ pub fn run() {
     #[cfg(debug_assertions)]
     let builder = builder.invoke_handler(tauri::generate_handler![
         hub::frontend_ready,
+        window::wait_for_drag_release,
         debug::emit_debug_event
     ]);
     #[cfg(not(debug_assertions))]
-    let builder = builder.invoke_handler(tauri::generate_handler![hub::frontend_ready]);
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        hub::frontend_ready,
+        window::wait_for_drag_release
+    ]);
 
     if let Err(err) = builder.run(tauri::generate_context!()) {
         tracing::error!(error = %err, "tauri run failed");

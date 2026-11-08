@@ -1,6 +1,6 @@
 # Fiore agent guide
 
-Mission: Fiore is a Windows desktop pet (Tauri v2, Rust + TypeScript, 32x32 pixel art). Behavior comes only from the event catalog in the spec.
+Mission: Fiore is a Windows desktop pet (Tauri v2, Rust + TypeScript, 48x48 pixel art). Behavior comes only from the event catalog in the spec.
 
 ## Commands
 - `pwsh scripts/check.ps1 -Tier fast [-Scope <paths>]`: fmt, clippy, tsc, biome, unit tests, docs-check

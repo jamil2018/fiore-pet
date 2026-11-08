@@ -1,7 +1,7 @@
 # Frontend rules (`src/**`)
 
 Purpose: rules that apply only to the TypeScript frontend. Global rules live in `/AGENTS.md`.
-last-verified: 2026-11-07
+last-verified: 2026-11-08
 
 - Layout and naming: `docs/conventions.md` (TypeScript section). Module map: `docs/codemap.md`.
 - Tests: `docs/testing.md` (Vitest, golden replay format).
@@ -14,6 +14,6 @@ last-verified: 2026-11-07
 5. `src/events.ts` mirrors Rust `FioreEvent` exactly (names, payload fields, camelCase). It is a contract file: executors never edit it; report a deviation.
 6. `src/behavior/reactions/index.ts` is a contract file (one stub per feature, pre-registered). Fill only your own `reactions/<feature>.ts`.
 7. Layers are `body`, `face`, `outfit`, `accessory`; animation and atlas names come from the atlas JSON, never hard-coded strings scattered in code (use constants from `src/behavior/types.ts`).
-8. Pixel art: nearest-neighbor only (`image-rendering: pixelated`, `imageSmoothingEnabled = false`), integer scale 3x.
+8. Pixel art: nearest-neighbor only (`image-rendering: pixelated`, `imageSmoothingEnabled = false`), 48x48 at integer scale 2x (legacy 32x32 at 3x).
 9. Petting reads pointer position and direction only. Never read keystrokes.
 10. Every new behavior needs a golden replay case or a Vitest unit test derived from the spec's acceptance criteria.

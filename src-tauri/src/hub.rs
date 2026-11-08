@@ -216,7 +216,9 @@ impl Hub {
                 self.seen.music = true;
                 vec![FioreEvent::StateSnapshot(snapshot)]
             }
-            FioreEvent::PetHoverStart {}
+            FioreEvent::PetDragStart {}
+            | FioreEvent::PetDragEnd {}
+            | FioreEvent::PetHoverStart {}
             | FioreEvent::PetStroke { .. }
             | FioreEvent::PetPetted {}
             | FioreEvent::PetHoverEnd { .. } => vec![event],

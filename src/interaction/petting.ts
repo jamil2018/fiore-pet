@@ -86,26 +86,56 @@ export function createStrokeTracker(): StrokeTracker {
 export function createPettingDetector(
   target: HTMLElement,
   emit: (event: FioreEvent) => void,
+  options: { startDragging?: () => Promise<void> } = {},
 ): () => void {
   const tracker = createStrokeTracker();
+  let dragging = false;
   const emitAll = (events: readonly FioreEvent[]): void => {
     for (const event of events) emit(event);
   };
   const onEnter = (event: PointerEvent): void => {
+    if (dragging || event.buttons) return;
     emitAll(tracker.enter(event.timeStamp));
   };
   const onMove = (event: PointerEvent): void => {
+    if (dragging || event.buttons) return;
+    // Native dragging may consume pointerup/enter; the first free move restores hover.
+    emitAll(tracker.enter(event.timeStamp));
     emitAll(tracker.move(event.clientX, event.timeStamp));
   };
   const onLeave = (event: PointerEvent): void => {
     emitAll(tracker.leave(event.timeStamp));
   };
+  const onDown = (event: PointerEvent): void => {
+    if (event.button !== 0 || dragging || !options.startDragging) return;
+    event.preventDefault();
+    dragging = true;
+    emitAll(tracker.leave(event.timeStamp));
+    emit({ type: 'pet.drag_start', payload: {} });
+    void (async () => {
+      try {
+        await options.startDragging?.();
+      } catch (error: unknown) {
+        console.debug('window drag failed', error);
+      } finally {
+        dragging = false;
+        emit({ type: 'pet.drag_end', payload: {} });
+      }
+    })();
+  };
+  const onCancel = (event: PointerEvent): void => {
+    emitAll(tracker.leave(event.timeStamp));
+  };
   target.addEventListener('pointerenter', onEnter);
   target.addEventListener('pointermove', onMove);
   target.addEventListener('pointerleave', onLeave);
+  target.addEventListener('pointerdown', onDown);
+  target.addEventListener('pointercancel', onCancel);
   return () => {
     target.removeEventListener('pointerenter', onEnter);
     target.removeEventListener('pointermove', onMove);
     target.removeEventListener('pointerleave', onLeave);
+    target.removeEventListener('pointerdown', onDown);
+    target.removeEventListener('pointercancel', onCancel);
   };
 }

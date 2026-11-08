@@ -1,6 +1,6 @@
 [package]
 name = "fiore"
-version = "0.1.0"
+version = "0.2.0"
 description = "Fiore desktop pet"
 edition = "2021"
 rust-version = "1.90"
@@ -33,6 +33,7 @@ features = [
   "Win32_System_Variant",
   "Win32_System_Threading",
   "Win32_System_WinRT",
+  "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
   "Media_Control",

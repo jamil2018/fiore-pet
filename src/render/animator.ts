@@ -1,9 +1,7 @@
 import type { Animation, Facing, LayerName, Resolution } from '../behavior/types';
 import { type AnimationDef, type MergedAtlas, spriteSource } from './atlas';
 
-const FRAME = 32;
-const SPRITE_SCALE = 3;
-const CSS_PX = FRAME * SPRITE_SCALE;
+const CSS_PX = 96;
 const NO_SHIFT: readonly [number, number] = [0, 0];
 
 /** Atlas z-order. `LAYERS` lists face before outfit, which is not the draw order. */
@@ -11,6 +9,82 @@ const DRAW_ORDER = ['body', 'outfit', 'face', 'accessory'] as const satisfies re
 
 export interface Animator {
   render(resolution: Resolution, now: number): void;
+}
+
+/** Text stays outside the mirrored pixel canvas and never interprets track titles as HTML. */
+export function createSpeechBubble(canvas: HTMLCanvasElement): (resolution: Resolution) => void {
+  canvas.style.position = 'absolute';
+  canvas.style.left = '32px';
+  canvas.style.top = '40px';
+  canvas.style.cursor = 'grab';
+  canvas.style.touchAction = 'none';
+  canvas.style.userSelect = 'none';
+  canvas.removeAttribute('title');
+  const bubble = canvas.ownerDocument.createElement('div');
+  bubble.setAttribute('role', 'status');
+  bubble.setAttribute('aria-live', 'polite');
+  bubble.style.cssText = [
+    'position:absolute',
+    'top:2px',
+    'left:4px',
+    'width:152px',
+    'box-sizing:border-box',
+    'padding:5px 9px',
+    'border:2px solid #493747',
+    'border-radius:16px',
+    'box-shadow:0 3px 0 #cbb8a0',
+    'background:#fff8e9',
+    'color:#49372f',
+    'font:600 12px/16px "Segoe UI",sans-serif',
+    'text-align:center',
+    'overflow:hidden',
+    'white-space:nowrap',
+    'text-overflow:ellipsis',
+    'pointer-events:none',
+  ].join(';');
+  const icon = canvas.ownerDocument.createElement('span');
+  icon.textContent = '♫';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.style.cssText = 'flex:none;font-size:16px;margin-right:5px';
+  const viewport = canvas.ownerDocument.createElement('span');
+  viewport.style.cssText = 'display:block;min-width:0;overflow:hidden';
+  const label = canvas.ownerDocument.createElement('span');
+  label.style.cssText = 'display:inline-block;white-space:nowrap';
+  viewport.append(label);
+  bubble.append(icon, viewport);
+  bubble.style.alignItems = 'center';
+  bubble.style.justifyContent = 'center';
+  let previous: string | null = null;
+  let scrolling: globalThis.Animation | null = null;
+  bubble.hidden = true;
+  canvas.after(bubble);
+  return (resolution) => {
+    const text = resolution.visible
+      ? (resolution.bubble ?? (resolution.body === 'notice' ? '!' : null))
+      : null;
+    canvas.style.cursor = resolution.body === 'walk' ? 'grabbing' : 'grab';
+    bubble.hidden = !text;
+    bubble.style.display = text ? 'flex' : 'none';
+    if (text === previous) return;
+    previous = text;
+    scrolling?.cancel();
+    scrolling = null;
+    label.textContent = text ?? '';
+    icon.hidden = !resolution.bubble;
+    bubble.setAttribute('aria-label', resolution.bubble ? `Music: ${text}` : (text ?? ''));
+    const overflow = Math.max(0, label.scrollWidth - viewport.clientWidth);
+    if (text && overflow > 0) {
+      scrolling = label.animate(
+        [
+          { transform: 'translateX(0)', offset: 0 },
+          { transform: 'translateX(0)', offset: 0.15 },
+          { transform: `translateX(-${overflow}px)`, offset: 0.85 },
+          { transform: `translateX(-${overflow}px)`, offset: 1 },
+        ],
+        { duration: 2800, iterations: Infinity, direction: 'alternate' },
+      );
+    }
+  };
 }
 
 interface Playback {
@@ -28,12 +102,12 @@ export function frameIndex(def: AnimationDef, elapsedMs: number, speed: number):
   return index >= def.count ? def.count - 1 : index;
 }
 
-function backingScale(): number {
+function backingScale(frame: number): number {
   const candidate = (globalThis as { devicePixelRatio?: unknown }).devicePixelRatio;
   const dpr = typeof candidate === 'number' && candidate > 0 ? candidate : 1;
-  // 125% and 150% displays make 3 CSS px a fractional device pixel. Round so
+  // Fractional display scaling can make a source pixel fractional. Round so
   // drawImage destinations stay on whole pixels.
-  return Math.max(1, Math.round(SPRITE_SCALE * dpr));
+  return Math.max(1, Math.round((CSS_PX / frame) * dpr));
 }
 
 function shiftOf(def: AnimationDef, frame: number): readonly [number, number] {
@@ -57,9 +131,9 @@ function track(current: Playback | null, anim: string, now: number, speed: numbe
   return playback;
 }
 
-function prepare(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): number {
-  const scale = backingScale();
-  const size = FRAME * scale;
+function prepare(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, frame: number): number {
+  const scale = backingScale(frame);
+  const size = frame * scale;
   if (canvas.width !== size) canvas.width = size;
   if (canvas.height !== size) canvas.height = size;
   canvas.style.width = `${CSS_PX}px`;
@@ -90,23 +164,57 @@ function paint(
     return;
   }
   const index = frame >= 0 && frame < def.count ? frame : 0;
-  const size = FRAME * scale;
+  const frameSize = def.frameSize ?? 32;
+  const size = frameSize * scale;
   const left = shift[0] * scale;
   const top = shift[1] * scale;
-  // Negative width mirrors the cell. `size - left` mirrors a positive headOffset x.
-  const destX = facing === 'left' ? size - left : left;
-  const destW = facing === 'left' ? -size : size;
-  ctx.drawImage(
-    image,
-    (def.start + index) * FRAME,
-    def.row * FRAME,
-    FRAME,
-    FRAME,
-    destX,
-    top,
-    destW,
-    size,
-  );
+  // drawImage with negative width moves the rectangle; only a transform mirrors pixels.
+  ctx.save();
+  if (facing === 'left') {
+    ctx.translate(size, 0);
+    ctx.scale(-1, 1);
+  }
+  const split = def.motionSplit;
+  if (split !== undefined && (left !== 0 || top !== 0)) {
+    // Draw the planted lower region first; the articulated head overlaps the neck.
+    if (split < frameSize)
+      ctx.drawImage(
+        image,
+        (def.start + index) * frameSize,
+        def.row * frameSize + split,
+        frameSize,
+        frameSize - split,
+        0,
+        split * scale,
+        size,
+        (frameSize - split) * scale,
+      );
+    if (split > 0)
+      ctx.drawImage(
+        image,
+        (def.start + index) * frameSize,
+        def.row * frameSize,
+        frameSize,
+        split,
+        left,
+        top,
+        size,
+        split * scale,
+      );
+  } else {
+    ctx.drawImage(
+      image,
+      (def.start + index) * frameSize,
+      def.row * frameSize,
+      frameSize,
+      frameSize,
+      left,
+      top,
+      size,
+      size,
+    );
+  }
+  ctx.restore();
 }
 
 function paintOverlay(
@@ -117,6 +225,7 @@ function paintOverlay(
   bodyAnim: Animation,
   bodyFrame: number,
   head: readonly [number, number],
+  bob: readonly [number, number],
   scale: number,
   facing: Facing,
   missing: Set<string>,
@@ -133,7 +242,15 @@ function paintOverlay(
     }
     return;
   }
-  paint(ctx, def, authored ? bodyFrame : 0, authored ? NO_SHIFT : head, scale, facing, missing);
+  paint(
+    ctx,
+    def,
+    authored ? bodyFrame : 0,
+    authored ? bob : addShift(head, bob),
+    scale,
+    facing,
+    missing,
+  );
 }
 
 function variantFor(layer: (typeof DRAW_ORDER)[number], resolution: Resolution): string | null {
@@ -162,7 +279,7 @@ export function createAnimator(canvas: HTMLCanvasElement, atlas: MergedAtlas): A
 
   return {
     render(resolution, now) {
-      const scale = prepare(canvas, ctx);
+      const scale = prepare(canvas, ctx, atlas.frameSize);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (!resolution.visible) {
         bodyPlayback = null;
@@ -171,10 +288,12 @@ export function createAnimator(canvas: HTMLCanvasElement, atlas: MergedAtlas): A
       }
 
       const bodyAnim: Animation = resolution.body ?? 'idle';
-      bodyPlayback = track(bodyPlayback, bodyAnim, now, resolution.speed);
       const bodyDef = atlas.body(bodyAnim);
+      // One-shots have fixed engine deadlines; slowing them truncates the final poses.
+      bodyPlayback = track(bodyPlayback, bodyAnim, now, bodyDef.loop ? resolution.speed : 1);
       const bodyFrame = frameIndex(bodyDef, bodyPlayback.elapsed, 1);
-      let head = shiftOf(bodyDef, bodyFrame);
+      const head = shiftOf(bodyDef, bodyFrame);
+      let bobOffset = NO_SHIFT;
       // headbob rides on top of the body animation: only its headOffset is applied,
       // so an activity pose is not replaced by a second body.
       if (resolution.overlay && resolution.overlay !== bodyAnim) {
@@ -184,14 +303,16 @@ export function createAnimator(canvas: HTMLCanvasElement, atlas: MergedAtlas): A
         const bobFrame = frameIndex(bob, overlayPlayback.elapsed, 1);
         const bobShift = shiftOf(bob, bobFrame);
         const bobY = resolution.overlayLevel >= 0.6 ? bobShift[1] * 2 : bobShift[1];
-        head = addShift(head, [bobShift[0], bobY]);
+        const working = ['code', 'think', 'write', 'browse'].includes(bodyAnim);
+        // Work sprites already articulate the head: add only a small musical nod.
+        bobOffset = working ? [Math.sign(bobShift[0]), Math.sign(bobY)] : [bobShift[0], bobY];
       } else {
         overlayPlayback = null;
       }
 
       for (const layer of DRAW_ORDER) {
         if (layer === 'body') {
-          paint(ctx, bodyDef, bodyFrame, NO_SHIFT, scale, resolution.facing, missing);
+          paint(ctx, bodyDef, bodyFrame, bobOffset, scale, resolution.facing, missing);
           continue;
         }
         const variant = variantFor(layer, resolution);
@@ -204,6 +325,7 @@ export function createAnimator(canvas: HTMLCanvasElement, atlas: MergedAtlas): A
           bodyAnim,
           bodyFrame,
           head,
+          bobOffset,
           scale,
           resolution.facing,
           missing,

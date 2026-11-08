@@ -34,6 +34,10 @@ export const musicReaction = defineReaction<MusicSlice>({
         snapshot.payload.music.playing ? keep(slice) : { slice: { level: 0 }, effects: [] },
       'fullscreen.entered': () => keep(slice),
       'fullscreen.exited': () => keep(slice),
+      'pet.drag_start': () => keep(slice),
+
+      'pet.drag_end': () => keep(slice),
+
       'pet.hover_start': () => keep(slice),
       'pet.stroke': () => keep(slice),
       'pet.petted': () => keep(slice),

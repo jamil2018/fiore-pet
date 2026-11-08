@@ -2,6 +2,8 @@ export const EVENT_TYPES = [
   'state.snapshot',
   'fullscreen.entered',
   'fullscreen.exited',
+  'pet.drag_start',
+  'pet.drag_end',
   'pet.hover_start',
   'pet.stroke',
   'pet.petted',
@@ -48,6 +50,8 @@ export type FioreEvent =
   | { type: 'state.snapshot'; payload: Snapshot }
   | { type: 'fullscreen.entered'; payload: Record<string, never> }
   | { type: 'fullscreen.exited'; payload: Record<string, never> }
+  | { type: 'pet.drag_start'; payload: Record<string, never> }
+  | { type: 'pet.drag_end'; payload: Record<string, never> }
   | { type: 'pet.hover_start'; payload: Record<string, never> }
   | { type: 'pet.stroke'; payload: { direction: StrokeDirection } }
   | { type: 'pet.petted'; payload: Record<string, never> }
@@ -123,6 +127,8 @@ export function parseFioreEvent(value: unknown): FioreEvent | null {
     }
     case 'fullscreen.entered':
     case 'fullscreen.exited':
+    case 'pet.drag_start':
+    case 'pet.drag_end':
     case 'pet.hover_start':
     case 'pet.petted':
     case 'music.stopped': {

@@ -136,6 +136,8 @@ function foldWorld(world: World, event: FioreEvent): World {
     }),
     'fullscreen.entered': () => ({ ...world, fullscreen: true }),
     'fullscreen.exited': () => ({ ...world, fullscreen: false }),
+    'pet.drag_start': () => world,
+    'pet.drag_end': () => world,
     'pet.hover_start': () => world,
     'pet.stroke': () => world,
     'pet.petted': () => world,
@@ -177,6 +179,8 @@ export function createEngine(
   // One draw per reaction, registry order, before any jump or yawn roll.
   const reactionRngs = reactions.map(() => reactionStream(config.rng));
   const slices: unknown[] = reactions.map((reaction) => reaction.init(world));
+  let dragging = false;
+  let settleUntil = 0;
   let pet: PetPhase = 'off';
   let petUntil: number | null = null;
   let oneShot: ActiveOneShot | null = null;
@@ -199,6 +203,8 @@ export function createEngine(
   }
 
   function resetTransient(): void {
+    dragging = false;
+    settleUntil = 0;
     pet = 'off';
     petUntil = null;
     oneShot = null;
@@ -305,6 +311,8 @@ export function createEngine(
       'state.snapshot': () => [],
       'fullscreen.entered': () => [],
       'fullscreen.exited': () => [],
+      'pet.drag_start': () => [],
+      'pet.drag_end': () => [],
       'pet.hover_start': () => [],
       'pet.stroke': () => [],
       'pet.petted': () => [],
@@ -313,7 +321,16 @@ export function createEngine(
       'app.category_changed': () => [],
       'music.started': () => [defaultOneShot('music', 'notice')],
       'music.level': (level) => {
-        if (!world.music.playing || !(level.payload.peak > 0.8) || jumpQueued()) return [];
+        if (
+          !world.music.playing ||
+          world.activity !== 'other' ||
+          dragging ||
+          now < settleUntil ||
+          pet !== 'off' ||
+          !(level.payload.peak > 0.8) ||
+          jumpQueued()
+        )
+          return [];
         if (config.rng.next() >= JUMP_CHANCE) return [];
         return [defaultOneShot('music', 'jump')];
       },
@@ -515,22 +532,24 @@ export function createEngine(
     // One-shots and petting take the body, so the music bob waits. Dance is the whole body.
     if (bodyRank < tierRank('activity') || body === 'dance') overlay = null;
 
+    const transitioning = oneShot?.animation === 'hide' || oneShot?.animation === 'appear';
+    if (!transitioning && (dragging || now < settleUntil)) {
+      body = dragging ? 'walk' : 'sit';
+      overlay = null;
+      face = world.mood;
+    }
+    if (accessory !== 'headphones' && !['code', 'think', 'write', 'browse'].includes(body ?? ''))
+      accessory = null;
+
     const transition = oneShot?.animation === 'hide' || oneShot?.animation === 'appear';
     const hidden =
       world.fullscreen || contributions.some((contribution) => contribution.hidden === true);
     let visible = true;
-    let move: Resolution['move'] = 'stay';
     if (hidden && !transition) {
       body = null;
       overlay = null;
       bubbleText = null;
       visible = false;
-    } else if (
-      pet === 'off' &&
-      !oneShot &&
-      (body === 'idle' || body === 'walk' || body === 'sit')
-    ) {
-      move = 'wander';
     }
 
     return {
@@ -542,7 +561,7 @@ export function createEngine(
       speed,
       bubble: bubbleText,
       visible,
-      move,
+      move: 'stay',
       facing,
       overlayLevel,
     };
@@ -559,7 +578,15 @@ export function createEngine(
       return resolve(now);
     }
 
-    applyPet(event, now);
+    if (event.type === 'pet.drag_start' || event.type === 'pet.drag_end') {
+      dragging = event.type === 'pet.drag_start';
+      settleUntil = dragging ? 0 : now + 1500;
+      pet = 'off';
+      petUntil = null;
+      oneShot = null;
+      queue = [];
+    }
+    if (!dragging && now >= settleUntil) applyPet(event, now);
     applyBubble(event, now);
     syncYawn(previous.mood, world.mood, now);
     expireOneShots(now);
@@ -575,7 +602,7 @@ export function createEngine(
       enqueue(['hide'], now, 'replace');
     } else if (event.type === 'fullscreen.exited' && previous.fullscreen) {
       enqueue(['appear'], now, 'replace');
-    } else if (!world.fullscreen) {
+    } else if (!world.fullscreen && !dragging && now >= settleUntil) {
       playEffects(effectsForEvent(previous, event, now, fromReactions), now);
     }
 
@@ -587,7 +614,8 @@ export function createEngine(
     advancePet(now);
     expireBubble(now);
     const fromReactions = runTick(now);
-    if (!world.fullscreen) playEffects(effectsForTick(now, fromReactions), now);
+    if (!world.fullscreen && !dragging && now >= settleUntil)
+      playEffects(effectsForTick(now, fromReactions), now);
     return resolve(now);
   }
 

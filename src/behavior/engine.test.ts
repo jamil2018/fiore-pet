@@ -36,7 +36,27 @@ const snapshot = {
 } as const satisfies FioreEvent;
 
 describe('createEngine', () => {
-  it('idles and wanders before any event', () => {
+  it('ac_win_1_keeps_placement_static_across_activity_music_and_time', () => {
+    const engine = createEngine(config());
+    for (const activity of ['other', 'coding', 'writing', 'browsing'] as const) {
+      for (const playing of [false, true]) {
+        expect(
+          engine.handle({
+            kind: 'event',
+            now: 0,
+            event: {
+              ...snapshot,
+              payload: { ...snapshot.payload, activity, music: { playing } },
+            },
+          }).move,
+        ).toBe('stay');
+        for (const now of [400, 1000, 30_000, 300_000]) {
+          expect(engine.handle({ kind: 'tick', now }).move).toBe('stay');
+        }
+      }
+    }
+  });
+  it('idles in place before any event', () => {
     const engine = createEngine(config());
     expect(engine.handle({ kind: 'tick', now: 0 })).toMatchObject({
       body: 'idle',
@@ -47,7 +67,7 @@ describe('createEngine', () => {
       speed: 1,
       bubble: null,
       visible: true,
-      move: 'wander',
+      move: 'stay',
       facing: 'right',
       overlayLevel: 0,
     });
@@ -426,5 +446,97 @@ describe('createEngine', () => {
     ).toBe('jump');
     expect(draws).toBe(2);
     expect(reactionDraws).toBeGreaterThan(0);
+  });
+});
+
+describe('drag and simultaneous activities', () => {
+  it.each(['other', 'coding', 'writing', 'browsing'] as const)(
+    'walks, settles, then resumes %s with music',
+    (activity) => {
+      const engine = createEngine(config(scripted(() => 0)));
+      const event = (type: 'pet.drag_start' | 'pet.drag_end', now: number) =>
+        engine.handle({ kind: 'event', now, event: { type, payload: {} } });
+      engine.handle({
+        kind: 'event',
+        now: 0,
+        event: {
+          ...snapshot,
+          payload: { ...snapshot.payload, activity, music: { playing: true } },
+        },
+      });
+      expect(event('pet.drag_start', 1)).toMatchObject({ body: 'walk', overlay: null });
+      expect(
+        engine.handle({
+          kind: 'event',
+          now: 100,
+          event: { type: 'music.level', payload: { peak: 1 } },
+        }),
+      ).toMatchObject({ body: 'walk', overlay: null });
+      expect(event('pet.drag_end', 200)).toMatchObject({ body: 'sit', overlay: null });
+      expect(
+        engine.handle({ kind: 'event', now: 300, event: { type: 'pet.hover_start', payload: {} } })
+          .body,
+      ).toBe('sit');
+      expect(engine.handle({ kind: 'tick', now: 1699 }).body).toBe('sit');
+      expect(engine.handle({ kind: 'tick', now: 1700 }).body).toBe(
+        { other: 'dance', coding: 'code', writing: 'write', browsing: 'browse' }[activity],
+      );
+    },
+  );
+  it('returns to idle after settling and suppresses work props during drag', () => {
+    const engine = createEngine(config());
+    engine.handle({
+      kind: 'event',
+      now: 0,
+      event: { ...snapshot, payload: { ...snapshot.payload, activity: 'coding' } },
+    });
+    expect(
+      engine.handle({ kind: 'event', now: 1, event: { type: 'pet.drag_start', payload: {} } }),
+    ).toMatchObject({ body: 'walk', accessory: null });
+    engine.handle({
+      kind: 'event',
+      now: 2,
+      event: {
+        type: 'app.category_changed',
+        payload: { category: 'other', process: '', title: '' },
+      },
+    });
+    engine.handle({ kind: 'event', now: 3, event: { type: 'pet.drag_end', payload: {} } });
+    expect(engine.handle({ kind: 'tick', now: 1503 }).body).toBe('idle');
+  });
+  it.each(['coding', 'writing', 'browsing'] as const)(
+    'never interrupts %s with loud-music jumps',
+    (activity) => {
+      const engine = createEngine(config(scripted(() => 0)));
+      engine.handle({
+        kind: 'event',
+        now: 0,
+        event: {
+          ...snapshot,
+          payload: { ...snapshot.payload, activity, music: { playing: true } },
+        },
+      });
+      for (let now = 1; now < 100; now++)
+        expect(
+          engine.handle({
+            kind: 'event',
+            now,
+            event: { type: 'music.level', payload: { peak: 1 } },
+          }).body,
+        ).toBe({ coding: 'code', writing: 'write', browsing: 'browse' }[activity]);
+    },
+  );
+  it('hides during dragging and does not revive a hidden pet on release', () => {
+    const engine = createEngine(config());
+    engine.handle({ kind: 'event', now: 0, event: { type: 'pet.drag_start', payload: {} } });
+    expect(
+      engine.handle({ kind: 'event', now: 1, event: { type: 'fullscreen.entered', payload: {} } })
+        .body,
+    ).toBe('hide');
+    engine.handle({ kind: 'tick', now: 1001 });
+    expect(
+      engine.handle({ kind: 'event', now: 1002, event: { type: 'pet.drag_end', payload: {} } })
+        .visible,
+    ).toBe(false);
   });
 });

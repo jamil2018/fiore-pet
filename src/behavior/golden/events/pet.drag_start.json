@@ -1,0 +1,4 @@
+{
+  "type": "pet.drag_start",
+  "payload": {}
+}

@@ -7,13 +7,15 @@ Nothing outside the event catalog triggers behavior. `docs-check` keeps the cata
 
 ## 1. Scope
 
-**In MVP:** a small transparent, frameless, always-on-top window (hidden from taskbar) with a 32x32 pixel-art pet scaled 3x (96x96 px), tray menu (Show/Hide, Quit, Autostart toggle), single instance, and these reactions: fullscreen hide/appear, petting, app-activity props, music dance/headbob, time-of-day mood, seasonal outfit. Placeholder art ships; real art is a drop-in replacement (no code changes).
+Release platforms: Windows 10/11 is the full product. v0.2.0 also offers an experimental macOS universal preview: desktop rendering, native dragging, petting, clock moods, seasonal outfits and tray controls. Foreground activity, media playback/audio levels and fullscreen sensing remain Windows-only; the Mac preview does not claim those reactions. Packaging, signing status and verification are owned by [the release guide](releasing.md).
+
+**In MVP:** a small transparent, frameless, always-on-top window (hidden from taskbar) with a 48x48 pixel-art pet scaled 2x (96x96 px), tray menu (Show/Hide, Quit, Autostart toggle), single instance, and these reactions: fullscreen hide/appear, petting, app-activity props, music dance/headbob, time-of-day mood, seasonal outfit. Artwork is generated from `scripts/dev/generate-sprites.mjs`; replacements use the atlas contract in `docs/reference/sprite-atlas.md`.
 
 **Deferred (post-MVP):** typing-rate/caret tracking (counts only, never content), idle-to-sleep, CPU-load sweat, gaming detection, settings window, per-sensor toggles, art-generation role, test-first tester role.
 
 ## 2. Behavior resolution
 
-Layers (all 32x32, aligned): `body`, `face`, `outfit`, `accessory`.
+Layers (all 48x48, aligned): `body`, `face`, `outfit`, `accessory`.
 
 **Body animation priority, highest first** (a higher entry preempts lower ones; lower ones resume when it ends):
 1. `hidden` (fullscreen active): no animation plays; sensors keep updating state.
@@ -21,12 +23,15 @@ Layers (all 32x32, aligned): `body`, `face`, `outfit`, `accessory`.
 3. one-shots (`notice`, `jump`, `stretch`, `yawn`, `twirl`, `appear`, `hide`, `wag`): play once, then return to the underlying state
 4. activity (`coding`, `writing`, `browsing`)
 5. music dance (only when activity is `other`)
-6. idle/wander (`idle`, `walk`, `sit`)
+6. stationary idle (`idle`, `sit`; `walk` while dragging)
 
 - **Face** comes from mood (and `happy` while petted). **Outfit** comes from season. **Accessory** is headphones (music), or the activity prop (laptop, notepad, tablet); headphones take the accessory slot only while music plays, and activity props still show on the body animation.
 - **Mood** changes face and animation speed only, never body choice.
 - Animations: `idle`, `walk`, `sit`, `notice`, `dance`, `headbob`, `jump`, `code`, `think`, `write`, `browse`, `lean`, `happy`, `wag`, `hide`, `appear`, `stretch`, `yawn`, `twirl`.
-- Window: only the pet region is visible; the window moves via `setPosition`; cursor hover over the sprite begins petting.
+- Window: only the pet region is visible; it never moves autonomously. Left-click and hold the pet to drag its window with the system cursor, then release to leave it in place. Placement uses native dragging; catalog drag events control its animation. Cursor hover without a pressed button begins petting; dragging ends the current hover and suspends stroke detection until the drag completes.
+- **AC-WIN-1:** idle ticks, activity/music changes, and fullscreen hide/appear never reposition the window.
+- **AC-WIN-2:** only a primary-button press on the pet starts native window dragging. Release leaves the window in place; dragging emits no pet strokes or happiness events. After dragging or a drag error, normal hovering can resume.
+- **AC-WIN-3:** `pet.drag_start` plays walk without activity props or bob. `pet.drag_end` holds sit for 1.5 s, then resumes the latest activity/music or idle. Hidden wins; events update state during dragging without queuing stale one-shots. Hover does not interrupt settling. The grab cursor is sufficient guidance; no tooltip.
 - On startup the hub sends `state.snapshot`; the engine initializes from it with no one-shots played.
 
 ## 3. Event catalog
@@ -38,6 +43,8 @@ Payload types: `Category = coding | writing | browsing | other`; `Mood = energet
 | `state.snapshot` | `{ activity: Category, mood: Mood, season: Season, fullscreen: boolean, music: { playing: boolean, title?: string, artist?: string, sourceApp?: string } }` | rust (hub, on startup) |
 | `fullscreen.entered` | `{}` | rust (`fullscreen.rs`) |
 | `fullscreen.exited` | `{}` | rust (`fullscreen.rs`) |
+| `pet.drag_start` | `{}` | ts (native drag begins) |
+| `pet.drag_end` | `{}` | ts (native drag ends or fails) |
 | `pet.hover_start` | `{}` | ts (`interaction/petting.ts`) |
 | `pet.stroke` | `{ direction: "left" \| "right" }` | ts |
 | `pet.petted` | `{}` | ts |
@@ -76,16 +83,16 @@ Payload types: `Category = coding | writing | browsing | other`; `Mood = energet
 - **coding** (`Code.exe`, `Cursor.exe`, `devenv.exe`, `idea64.exe`, `pycharm64.exe`, `sublime_text.exe`, `WindowsTerminal.exe`): tiny laptop, `code`, occasional `think`.
 - **writing** (`notepad.exe`, `notepad++.exe`, `WINWORD.EXE`, `Obsidian.exe`, `Notion.exe`, plus browser titles containing "Google Docs", "Notion" or "Word"): notepad, `write`.
 - **browsing** (`chrome.exe`, `msedge.exe`, `firefox.exe`, `brave.exe`, `opera.exe`, when no writing title rule matched): tablet, `browse`.
-- **other:** idle behavior (wander, sit).
+- **other:** stationary idle behavior.
 - **AC-AC-1:** `chrome.exe` + title "Doc - Google Docs" classifies `writing`; `chrome.exe` + title "News" classifies `browsing`.
 - **AC-AC-2:** a category that changes and reverts within 1.5 s emits nothing.
 - **AC-AC-3:** the pet's own process never produces a category change.
 - **AC-AC-4:** unknown process classifies `other`.
-- **AC-AC-5:** `app.category_changed` sets the matching animation/prop; `other` returns to idle/wander (or music dance if music is playing).
+- **AC-AC-5:** `app.category_changed` sets the matching animation/prop; `other` returns to stationary idle (or music dance if music is playing).
 
 ### 3.4 Music (`sensors/media.rs`, `sensors/audio_peak.rs`, `reactions/music.ts`)
 - `music.started`: GSMTC session changes to Playing. Headphones appear, pet plays `notice`. If activity is `other` it plays `dance`; otherwise it keeps the activity animation and adds `headbob`.
-- `music.level { peak }`: ~15 Hz while music plays (from `IAudioMeterInformation`); controls bob speed and amplitude; `peak > 0.8` occasionally triggers `jump`.
+- `music.level { peak }`: ~15 Hz while music plays (from `IAudioMeterInformation`); controls bob speed and amplitude; `peak > 0.8` occasionally triggers `jump` only with activity other and no dragging, settling or petting.
 - `music.track_changed`: `notice` plus a speech bubble with the title for 3 s.
 - `music.stopped`: emitted when nothing has played for 2 s; headphones come off.
 - **AC-MU-1:** started with activity `other` -> `notice` then `dance` with headphones.
@@ -93,6 +100,8 @@ Payload types: `Category = coding | writing | browsing | other`; `Mood = energet
 - **AC-MU-3:** `music.level` events are ignored when music is not playing; `peak <= 0.8` never triggers `jump`.
 - **AC-MU-4:** `music.track_changed` shows the bubble for 3 s (engine time), then clears it.
 - **AC-MU-5:** `music.stopped` removes headphones and `dance`/`headbob`; a pause shorter than 2 s emits no `music.stopped`.
+- **AC-MU-7:** work plus music keeps one work body, headphones and a restrained bob of at most one source pixel per axis. Activity props only appear with their matching work body.
+- **AC-MU-8:** track banners show a stationary music note beside literal text. Only overflowing text scrolls horizontally, pausing at both ends; changing or clearing the title cancels the old scroll.
 - **AC-MU-6:** no `music.level` events are emitted while music is stopped (sensor idle, CPU budget).
 
 ### 3.5 Mood and season (`sensors/clock.rs`, `reactions/mood.ts`, `reactions/season.ts`)
@@ -124,4 +133,4 @@ Payload types: `Category = coding | writing | browsing | other`; `Mood = energet
 - **Performance:** idle CPU < 1%. Idle RAM pass/fail is the sum of private bytes for `fiore.exe` plus its WebView2 child tree, under ~200 MB (Scenario I). Do not sum working set: it double-counts shared Chromium pages. Report `fiore.exe` alone and tree working set as informational, not as the gate. Poll rates: foreground 500 ms, audio peak ~15 Hz only while playing, clock 60 s, fullscreen <= 500 ms. Metric: `docs/decisions/0006-ram-budget-private-process-tree.md`.
 - **Privacy:** keystroke content is never read. Window titles and track names are logged only at `debug` level (logs are gitignored).
 - **Resilience:** sensor failure is logged and that sensor disabled; the app never crashes. See `docs/architecture.md`.
-- **Art:** 32x32 frames, 3x nearest-neighbor scale, atlas split per feature group (`base`, `activity`, `music`, `petting`, `fullscreen`, `outfits`, `faces`).
+- **Art:** 48x48 frames, 2x nearest-neighbor scale, atlas split per feature group (`base`, `activity`, `music`, `petting`, `fullscreen`, `outfits`, `faces`). The W32 user-requested detail increase retains the same 96px desktop footprint. Legacy 32x32 atlas sets remain loadable at 3x; a set cannot mix grids.

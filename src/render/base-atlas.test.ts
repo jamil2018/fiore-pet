@@ -67,10 +67,10 @@ function readRgba(png: Buffer): { width: number; height: number; pixels: Uint8Ar
 }
 
 function cell(pixels: Uint8Array, width: number, col: number, row: number): Buffer {
-  const out = Buffer.alloc(32 * 32 * 4);
-  for (let y = 0; y < 32; y++) {
-    const src = ((row * 32 + y) * width + col * 32) * 4;
-    out.set(pixels.subarray(src, src + 128), y * 128);
+  const out = Buffer.alloc(48 * 48 * 4);
+  for (let y = 0; y < 48; y++) {
+    const src = ((row * 48 + y) * width + col * 48) * 4;
+    out.set(pixels.subarray(src, src + 192), y * 192);
   }
   return out;
 }
@@ -83,15 +83,16 @@ describe('base atlas', () => {
   });
   const merged = mergeAtlases(files);
 
-  it('matches the 32px grid and keeps the pre-split key set without collisions', () => {
-    expect(image.width % 32).toBe(0);
-    expect(image.height % 32).toBe(0);
+  it('matches the native 48px grid and keeps the key set without collisions', () => {
+    expect(image.width % 48).toBe(0);
+    expect(image.height % 48).toBe(0);
     for (const file of files) {
       for (const sheet of file.sheets) {
         const sheetPixels = sheetImage(sheet.image);
-        expect(sheetPixels.width % 32).toBe(0);
-        expect(sheetPixels.height % 32).toBe(0);
-        validateImage(sheet, sheetPixels);
+        expect(file.frame).toEqual({ w: 48, h: 48 });
+        expect(sheetPixels.width % 48).toBe(0);
+        expect(sheetPixels.height % 48).toBe(0);
+        validateImage(sheet, sheetPixels, file.frame.w);
       }
     }
     const baseOnly = mergeAtlases(files.filter((file) => file.group === 'base'));
@@ -102,7 +103,7 @@ describe('base atlas', () => {
       const def = merged.lookup('body', undefined, name);
       expect(def, name).toBeTruthy();
       if (!def?.headOffset) throw new Error(`missing headOffset for ${name}`);
-      expect(def.image).toBe('base.png');
+      expect(def.image).toMatch(/\.png$/);
       expect(def.loop).toBe(!(ONE_SHOTS as readonly string[]).includes(name));
       expect(def.headOffset).toHaveLength(def.count);
     }
@@ -113,16 +114,22 @@ describe('base atlas', () => {
       expect(def.image).toBe('activity.png');
       expect(def.headOffset).toHaveLength(def.count);
     }
-    for (const face of FACES) expect(merged.lookup('face', face, '*')?.count).toBe(1);
-    for (const outfit of OUTFITS) expect(merged.lookup('outfit', outfit, '*')?.count).toBe(1);
-    for (const accessory of ACCESSORIES) {
-      const def = merged.lookup('accessory', accessory, '*');
-      expect(def?.count).toBe(1);
-      expect(def?.image).toBe('base.png');
+    for (const name of [...BODY, ...ACTIVITY_BODY]) {
+      for (const [layer, variants] of [
+        ['face', FACES],
+        ['outfit', OUTFITS],
+        ['accessory', ACCESSORIES],
+      ] as const) {
+        for (const variant of variants) {
+          expect(merged.lookup(layer, variant, name)?.count, `${layer}/${variant}/${name}`).toBe(
+            merged.body(name).count,
+          );
+        }
+      }
     }
   });
 
-  it('uses fully opaque or fully transparent pixels and ends one-shots on idle', () => {
+  it('uses binary alpha and ends one-shots on idle (hide ends transparent)', () => {
     let opaque = 0;
     for (let i = 3; i < image.pixels.length; i += 4) {
       const alpha = image.pixels[i];
@@ -135,14 +142,18 @@ describe('base atlas', () => {
     for (const name of BODY) {
       if (!(ONE_SHOTS as readonly string[]).includes(name)) continue;
       const def = merged.body(name);
-      const last = cell(image.pixels, image.width, def.count - 1, def.row);
-      expect(Buffer.compare(last, idle)).toBe(0);
-      expect(def.headOffset?.[def.count - 1]).toEqual([0, 0]);
+      const source = sheetImage(def.image ?? 'base.png');
+      const last = cell(source.pixels, source.width, def.count - 1, def.row);
+      if (name === 'hide') expect(last.every((value) => value === 0)).toBe(true);
+      else {
+        expect(Buffer.compare(last, idle), name).toBe(0);
+        expect(def.headOffset?.[def.count - 1]).toEqual([0, 0]);
+      }
     }
   });
 
-  it('draws the default idle layers from the base sheet', () => {
-    rememberSprite('base.png', {} as CanvasImageSource);
+  it('draws the default idle layers from the feature sheets', () => {
+    for (const group of SPRITE_GROUPS) rememberSprite(`${group}.png`, {} as CanvasImageSource);
     const draws: number[][] = [];
     let smoothing = true;
     const canvas = {
@@ -151,6 +162,8 @@ describe('base atlas', () => {
       style: { width: '', height: '', imageRendering: '' },
       getContext() {
         return {
+          save() {},
+          restore() {},
           get imageSmoothingEnabled() {
             return smoothing;
           },
@@ -193,6 +206,55 @@ describe('base atlas', () => {
     expect(smoothing).toBe(false);
     expect(canvas.width).toBe(96);
     expect(draws).toHaveLength(3);
-    expect(draws.every((draw) => draw[2] === 32 && draw[6] === 96 && draw[4] === 0)).toBe(true);
+    expect(draws.every((draw) => draw[2] === 48 && draw[6] === 96 && draw[4] === 0)).toBe(true);
+  });
+
+  function frame(name: string, index: number): Buffer {
+    const def = merged.body(name);
+    const source = sheetImage(def.image ?? 'base.png');
+    return cell(source.pixels, source.width, index, def.row);
+  }
+
+  function difference(a: Buffer, b: Buffer): number {
+    let count = 0;
+    for (let p = 0; p < a.length; p += 4)
+      if (!a.subarray(p, p + 4).equals(b.subarray(p, p + 4))) count++;
+    return count;
+  }
+
+  it('gives sitting and each activity visibly different artwork', () => {
+    for (const [a, b] of [
+      ['idle', 'sit'],
+      ['code', 'think'],
+      ['code', 'browse'],
+      ['think', 'browse'],
+    ]) {
+      expect(difference(frame(a ?? '', 3), frame(b ?? '', 3)), `${a}/${b}`).toBeGreaterThan(150);
+    }
+  });
+
+  it('articulates a nod and lean while keeping the feet planted', () => {
+    for (const name of ['headbob', 'lean']) {
+      const a = frame(name, 0),
+        b = frame(name, 4);
+      expect(difference(a, b), name).toBeGreaterThan(80);
+      for (let y = 40; y < 45; y++) {
+        const start = (y * 48 + 14) * 4,
+          end = (y * 48 + 34) * 4;
+        expect(a.subarray(start, end).equals(b.subarray(start, end)), `${name} feet`).toBe(true);
+      }
+    }
+  });
+
+  it('extends the arms overhead during the stretch', () => {
+    const idle = frame('idle', 0),
+      stretch = frame('stretch', 3);
+    let raised = 0;
+    for (let y = 2; y < 20; y++)
+      for (const x of [8, 9, 10, 38, 39, 40]) {
+        const alpha = (y * 48 + x) * 4 + 3;
+        if (stretch[alpha] && !idle[alpha]) raised++;
+      }
+    expect(raised).toBeGreaterThan(25);
   });
 });

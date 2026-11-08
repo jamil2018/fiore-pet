@@ -2,37 +2,63 @@
   "version": 1,
   "group": "petting",
   "frame": {
-    "w": 32,
-    "h": 32
+    "w": 48,
+    "h": 48
   },
   "sheets": [
     {
       "layer": "body",
-      "image": "base.png",
+      "image": "petting.png",
       "animations": {
         "lean": {
-          "row": 7,
+          "row": 0,
           "start": 0,
-          "count": 2,
-          "fps": 4,
+          "count": 8,
+          "fps": 8,
           "loop": true,
+          "motionSplit": 32,
           "headOffset": [
             [
               2,
-              0
+              2
             ],
             [
               3,
-              0
+              2
+            ],
+            [
+              5,
+              2
+            ],
+            [
+              5,
+              2
+            ],
+            [
+              5,
+              2
+            ],
+            [
+              5,
+              2
+            ],
+            [
+              3,
+              2
+            ],
+            [
+              2,
+              2
             ]
           ]
         },
         "happy": {
-          "row": 8,
+          "row": 1,
           "start": 0,
-          "count": 4,
-          "fps": 6,
+          "count": 8,
+          "fps": 8,
           "loop": true,
+          "motionSplit": 32,
           "headOffset": [
             [
               0,
@@ -48,16 +74,33 @@
             ],
             [
               0,
-              -2
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
             ]
           ]
         },
         "wag": {
-          "row": 9,
+          "row": 2,
           "start": 0,
-          "count": 4,
+          "count": 8,
           "fps": 10,
           "loop": false,
+          "motionSplit": 32,
           "headOffset": [
             [
               0,
@@ -65,31 +108,33 @@
             ],
             [
               0,
-              -1
+              0
             ],
             [
               0,
               0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
             ],
             [
               0,
               0
             ]
           ]
-        }
-      }
-    },
-    {
-      "layer": "face",
-      "image": "base.png",
-      "variant": "happy",
-      "animations": {
-        "*": {
-          "row": 15,
-          "start": 4,
-          "count": 1,
-          "fps": 1,
-          "loop": true
         }
       }
     }

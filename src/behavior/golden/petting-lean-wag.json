@@ -8,7 +8,9 @@
       "mood": "content",
       "season": "autumn",
       "fullscreen": false,
-      "music": { "playing": false }
+      "music": {
+        "playing": false
+      }
     }
   },
   "steps": [
@@ -16,107 +18,246 @@
       "at": 0,
       "event": {
         "type": "music.started",
-        "payload": { "title": "t", "artist": "a", "sourceApp": "Spotify.exe" }
+        "payload": {
+          "title": "t",
+          "artist": "a",
+          "sourceApp": "Spotify.exe"
+        }
       },
-      "expect": { "body": "notice", "accessory": "headphones", "move": "stay", "facing": "right" }
+      "expect": {
+        "body": "notice",
+        "accessory": "headphones",
+        "move": "stay",
+        "facing": "right"
+      }
     },
     {
       "at": 1000,
       "tick": true,
-      "expect": { "body": "dance", "accessory": "headphones", "facing": "right" }
+      "expect": {
+        "body": "dance",
+        "accessory": "headphones",
+        "facing": "right"
+      }
     },
     {
       "at": 1100,
-      "event": { "type": "pet.hover_start", "payload": {} },
-      "expect": { "body": "idle", "accessory": "headphones", "move": "stay", "facing": "right" }
+      "event": {
+        "type": "pet.hover_start",
+        "payload": {}
+      },
+      "expect": {
+        "body": "idle",
+        "accessory": "headphones",
+        "move": "stay",
+        "facing": "right"
+      }
     },
     {
       "at": 1200,
-      "event": { "type": "pet.stroke", "payload": { "direction": "left" } },
-      "expect": { "body": "lean", "face": "content", "facing": "left" }
+      "event": {
+        "type": "pet.stroke",
+        "payload": {
+          "direction": "left"
+        }
+      },
+      "expect": {
+        "body": "lean",
+        "face": "content",
+        "facing": "left"
+      }
     },
     {
       "at": 1300,
-      "event": { "type": "pet.hover_end", "payload": { "wasPetted": false } },
-      "expect": { "body": "dance", "accessory": "headphones", "facing": "right" }
+      "event": {
+        "type": "pet.hover_end",
+        "payload": {
+          "wasPetted": false
+        }
+      },
+      "expect": {
+        "body": "dance",
+        "accessory": "headphones",
+        "facing": "right"
+      }
     },
     {
       "at": 1400,
-      "event": { "type": "music.stopped", "payload": {} },
-      "expect": { "body": "idle", "accessory": null, "move": "wander", "facing": "right" }
+      "event": {
+        "type": "music.stopped",
+        "payload": {}
+      },
+      "expect": {
+        "body": "idle",
+        "accessory": null,
+        "move": "stay",
+        "facing": "right"
+      }
     },
     {
       "at": 1500,
       "event": {
         "type": "app.category_changed",
-        "payload": { "category": "coding", "process": "Code.exe", "title": "x" }
+        "payload": {
+          "category": "coding",
+          "process": "Code.exe",
+          "title": "x"
+        }
       },
-      "expect": { "body": "code", "accessory": "laptop", "move": "stay", "facing": "right" }
+      "expect": {
+        "body": "code",
+        "accessory": "laptop",
+        "move": "stay",
+        "facing": "right"
+      }
     },
     {
       "at": 1600,
-      "event": { "type": "pet.hover_start", "payload": {} },
-      "expect": { "body": "idle", "accessory": "laptop", "move": "stay", "facing": "right" }
+      "event": {
+        "type": "pet.hover_start",
+        "payload": {}
+      },
+      "expect": {
+        "body": "idle",
+        "accessory": null,
+        "move": "stay",
+        "facing": "right"
+      }
     },
     {
       "at": 1700,
-      "event": { "type": "pet.stroke", "payload": { "direction": "left" } },
-      "expect": { "body": "lean", "face": "content", "accessory": "laptop", "facing": "left" }
+      "event": {
+        "type": "pet.stroke",
+        "payload": {
+          "direction": "left"
+        }
+      },
+      "expect": {
+        "body": "lean",
+        "face": "content",
+        "accessory": null,
+        "facing": "left"
+      }
     },
     {
       "at": 1800,
-      "event": { "type": "pet.petted", "payload": {} },
-      "expect": { "body": "happy", "face": "happy", "facing": "left" }
+      "event": {
+        "type": "pet.petted",
+        "payload": {}
+      },
+      "expect": {
+        "body": "happy",
+        "face": "happy",
+        "facing": "left"
+      }
     },
     {
       "at": 2800,
       "tick": true,
-      "expect": { "body": "happy", "face": "happy", "facing": "left" }
+      "expect": {
+        "body": "happy",
+        "face": "happy",
+        "facing": "left"
+      }
     },
     {
       "at": 3800,
       "tick": true,
-      "expect": { "body": "idle", "face": "content", "facing": "left" }
+      "expect": {
+        "body": "idle",
+        "face": "content",
+        "facing": "left"
+      }
     },
     {
       "at": 3900,
-      "event": { "type": "pet.hover_end", "payload": { "wasPetted": true } },
-      "expect": { "body": "wag", "face": "content", "accessory": "laptop", "facing": "right" }
+      "event": {
+        "type": "pet.hover_end",
+        "payload": {
+          "wasPetted": true
+        }
+      },
+      "expect": {
+        "body": "wag",
+        "face": "content",
+        "accessory": null,
+        "facing": "right"
+      }
     },
     {
       "at": 4700,
       "tick": true,
-      "expect": { "body": "code", "accessory": "laptop", "facing": "right" }
+      "expect": {
+        "body": "code",
+        "accessory": "laptop",
+        "facing": "right"
+      }
     },
     {
       "at": 4800,
-      "event": { "type": "pet.hover_start", "payload": {} },
-      "expect": { "body": "idle", "facing": "right" }
+      "event": {
+        "type": "pet.hover_start",
+        "payload": {}
+      },
+      "expect": {
+        "body": "idle",
+        "facing": "right"
+      }
     },
     {
       "at": 4900,
-      "event": { "type": "pet.stroke", "payload": { "direction": "left" } },
-      "expect": { "body": "lean", "facing": "left" }
+      "event": {
+        "type": "pet.stroke",
+        "payload": {
+          "direction": "left"
+        }
+      },
+      "expect": {
+        "body": "lean",
+        "facing": "left"
+      }
     },
     {
       "at": 5000,
-      "event": { "type": "fullscreen.entered", "payload": {} },
-      "expect": { "body": "hide", "visible": true, "facing": "right" }
+      "event": {
+        "type": "fullscreen.entered",
+        "payload": {}
+      },
+      "expect": {
+        "body": "hide",
+        "visible": true,
+        "facing": "right"
+      }
     },
     {
       "at": 6000,
       "tick": true,
-      "expect": { "body": null, "visible": false, "facing": "right" }
+      "expect": {
+        "body": null,
+        "visible": false,
+        "facing": "right"
+      }
     },
     {
       "at": 6100,
-      "event": { "type": "fullscreen.exited", "payload": {} },
-      "expect": { "body": "appear", "visible": true }
+      "event": {
+        "type": "fullscreen.exited",
+        "payload": {}
+      },
+      "expect": {
+        "body": "appear",
+        "visible": true
+      }
     },
     {
       "at": 7100,
       "tick": true,
-      "expect": { "body": "code", "accessory": "laptop", "visible": true, "facing": "right" }
+      "expect": {
+        "body": "code",
+        "accessory": "laptop",
+        "visible": true,
+        "facing": "right"
+      }
     }
   ]
 }
