@@ -14,10 +14,10 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `src-tauri/src/lib.rs`: composition root; plugins, logging, window, hub, commands. Contract file.
 - `src-tauri/src/events.rs`: `FioreEvent` serde enum (all catalog events), payload types, serde tests. Contract file.
 - `src-tauri/src/hub.rs`: `EventHub`; registers sensors, spawns threads, dedupes, emits `fiore://event`, sends `state.snapshot`. Contract file.
-- `src-tauri/src/window.rs`: window setup, tray (Show/Hide, Quit), single instance, initial placement (not a position command; wander uses `bridge.window.setPosition`).
+- `src-tauri/src/window.rs`: window setup, tray (Show/Hide, Start with Windows, Quit), single instance, initial placement (not a position command; wander uses `bridge.window.setPosition`).
 - `src-tauri/src/logging.rs`: `tracing` JSON lines to `logs/fiore-dev.log`, `RUST_LOG` filter.
 - `src-tauri/src/debug.rs`: dev-only `emit_debug_event` command and loopback TCP injector (event injection for `emit-event.mjs`, debug panel).
-- `src-tauri/src/autostart.rs`: autostart toggle wired to tray. [planned W3.0]
+- `src-tauri/src/window/autostart.rs`: tray "Start with Windows" toggle (`tauri-plugin-autostart`).
 - `src-tauri/src/sensors/mod.rs`: `Sensor` trait and registration of all 5 sensors. Contract file.
 - `src-tauri/src/sensors/win.rs`: shared Win32 helpers (`WinRtGuard`, `ComGuard`, `foreground`, `is_own_pid`). Contract file. `#[cfg(windows)]`.
 - `src-tauri/src/sensors/media.rs`: GSMTC session -> `music.started`, `music.track_changed`, `music.stopped` (2 s stop debounce).
@@ -67,6 +67,7 @@ Harness files (agents, rules, skills, hooks, scripts, evals) are indexed in `doc
 - `scripts/dev/sim/test-tone.wav`: 440 Hz tone bundled for `play-test-tone.ps1`.
 - `scripts/dev/sim/fullscreen-window.ps1`: simulate a fullscreen window.
 - `scripts/dev/sim/set-fake-clock.ps1`: set `FIORE_FAKE_CLOCK` for mood, season, and boundary times.
+- `scripts/dev/perf-sample.ps1`: idle CPU% and RAM sampler for `fiore.exe` plus the WebView2 process tree.
 
 ## Config (repo root)
 - `package.json`, `vite.config.ts`, `tsconfig.json`, `biome.json`, `rustfmt.toml`: tooling configs (`dev`, `dev:mock`, `test`, `build` scripts).

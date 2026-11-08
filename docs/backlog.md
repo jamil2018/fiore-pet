@@ -31,6 +31,8 @@ Format: `- [ ] <summary> (source: <run-id or "plan">, <date>)`. Every `TODO(back
 - [ ] `keep_running()` in `clock.rs` returns `false` and is passed as the stop condition. Rename it to `never_stop` (`clock.rs`) (source: w20-integrate, 2026-11-08)
 - [ ] Non-Windows `fullscreen.rs` `start` returns `Err`, while the other sensors return `Ok(())` (`fullscreen.rs`) (source: w20-integrate, 2026-11-08)
 - [ ] `#[allow(dead_code)]` on `SensorError::Failed` still says "W1.0 stubs". Drop the allow or update the reason now that real sensors return `Failed` (`sensors/mod.rs`) (source: w20-integrate, 2026-11-08)
+- [ ] Quiet W3.1 idle resample on a merged release build (user-approved, no Calculator/notepad/other GUI to force activity `other`) (source: w30-perf-manual, 2026-11-08)
+- [ ] **ESCALATE RAM:** Scenario I whole-tree working set ~361–374 MB (private ~155–162 MB) vs spec ~60 MB; `fiore.exe` alone ~31–32 MB WS. CPU mean < 1% PASS. Do not redefine the metric; user decides spec vs WebView2-tree optimise (`docs/release/v0.1.0-checklist.md`) (source: w30-perf-manual, 2026-11-08)
 
 ## Done
 - [x] W2.0 contract step: engine-owned defaults are documented in `docs/architecture.md` (rules A–C). A reaction adds to those defaults and suppresses only its own feature's one-shots. (source: w11-judge, 2026-11-08)

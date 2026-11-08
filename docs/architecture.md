@@ -94,7 +94,7 @@ W2.0 sensor tasks share the rules below. Hemisphere and the fake clock are speci
 
 ## Window model
 - One transparent, frameless, always-on-top window, skip-taskbar, not resizable, sized to the pet (96x96 plus bubble margin).
-- Single instance (second launch focuses/does nothing). Tray: Show/Hide, Autostart toggle (P3), Quit.
+- Single instance (second launch focuses/does nothing). Tray: Show/Hide, Autostart toggle, Quit.
 - Movement via `setPosition` from `WindowMover`; the sprite region receives pointer input.
 - Fullscreen: the window is hidden (not closed); sensors keep running (spec 3.1).
 
