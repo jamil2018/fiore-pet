@@ -11,7 +11,7 @@ macOS is an experimental universal preview for Apple Silicon and Intel. v0.3.0 a
 
 The older v0.2.0 Mac preview lacks these sensors. [Mac sensor CI](../.github/workflows/macos.yml) continues to build separate universal development artifacts; release packages come from the versioned workflow below. Use a recent Xcode SDK with Core Audio tap declarations when building Mac bundles.
 
-Windows binaries are unsigned. The Mac app is ad-hoc signed (`signingIdentity: "-"`) and not notarized; Gatekeeper may block it. For a build you trust, review macOS Privacy & Security's Open Anyway option. This is not a Developer ID distribution. No signing credentials or API keys are required by the workflow. A native Mac smoke check remains required before calling the preview runtime verified.
+The [README installation notes](../README.md#installation) own the signing disclosure and user-facing SmartScreen/Gatekeeper instructions; link them from each release. The Mac build configuration uses `signingIdentity: "-"`, not a Developer ID identity. No signing credentials or API keys are required by the workflow. A native Mac smoke check remains required before calling the preview runtime verified.
 
 ## Local builds
 
