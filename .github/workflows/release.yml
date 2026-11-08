@@ -3,7 +3,7 @@ name: release artifacts
 on:
   workflow_dispatch:
   push:
-    branches: [codex/release-0.2.0]
+    branches: [codex/release-0.3.0]
 
 permissions:
   contents: read
@@ -42,9 +42,9 @@ jobs:
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $stage = 'release-artifacts/windows'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
-          $installers = @(Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe)
-          if ($installers.Count -ne 1) { throw 'Expected one NSIS installer' }
-          Copy-Item -LiteralPath $installers[0].FullName -Destination "$stage/Fiore_${version}_windows-x64-setup.exe"
+          $installer = "src-tauri/target/release/bundle/nsis/Fiore_${version}_x64-setup.exe"
+          if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) { throw "Missing installer for version $version" }
+          Copy-Item -LiteralPath $installer -Destination "$stage/Fiore_${version}_windows-x64-setup.exe"
           Compress-Archive -LiteralPath src-tauri/target/release/fiore.exe -DestinationPath "$stage/Fiore_${version}_windows-x64-portable.zip"
           Set-Content -Path "$stage/SOURCE_SHA-windows-x64.txt" -Value $env:GITHUB_SHA -Encoding utf8NoBOM
           $hashes = Get-ChildItem $stage -File | Sort-Object Name | ForEach-Object {
@@ -68,18 +68,34 @@ jobs:
           cache: npm
       - name: Install Rust and universal targets
         run: |
-          rustup toolchain install stable --profile minimal
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
           rustup default stable
           rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
       - run: npm ci --no-audit --no-fund
+      - name: Verify installed browser scripting interfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/fiore-scripting"
+          cd "$RUNNER_TEMP/fiore-scripting"
+          sdef /Applications/Safari.app | sdp -fh --basename Safari --bundleid com.apple.Safari
+          grep -E 'doJavaScript:.*in:' Safari.h
+          if [[ -d '/Applications/Google Chrome.app' ]]; then
+            sdef '/Applications/Google Chrome.app' | sdp -fh --basename Chrome --bundleid com.google.Chrome
+            grep 'executeJavascript:' Chrome.h
+          fi
       - name: Native tests and frontend build
         run: |
+          node --test src-tauri/native/macos/browser_probe.test.mjs
           npm test
           npm run build
+          cargo fmt --manifest-path src-tauri/Cargo.toml --check
+          cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
           cargo test --locked --manifest-path src-tauri/Cargo.toml
+          node scripts/harness/docs-check.mjs
       - name: Build universal macOS preview
         run: npm run tauri -- build --target universal-apple-darwin --bundles app,dmg
       - name: Verify and stage macOS artifacts
@@ -90,6 +106,12 @@ jobs:
           bundle=src-tauri/target/universal-apple-darwin/release/bundle
           app="$bundle/macos/Fiore.app"
           codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -d --entitlements :- "$app" > entitlements.plist
+          /usr/libexec/PlistBuddy -c 'Print :com.apple.security.automation.apple-events' entitlements.plist | grep true
+          /usr/libexec/PlistBuddy -c 'Print :NSAppleEventsUsageDescription' "$app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :NSAudioCaptureUsageDescription' "$app/Contents/Info.plist"
+          bundled_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
+          [[ "$bundled_version" == "$version" ]]
           archs=$(lipo -archs "$app/Contents/MacOS/fiore")
           echo "Universal architectures: $archs"
           [[ " $archs " == *" arm64 "* && " $archs " == *" x86_64 "* ]]

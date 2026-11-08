@@ -1,15 +1,15 @@
 # macOS sensors
 
-Purpose: public API boundaries, permission setup and manual verification for the development Mac sensor implementation.
+Purpose: public API boundaries, permission setup and manual verification for Mac sensors in v0.3.0 and later.
 last-verified: 2026-11-08
 
-Platform behavior and events are owned by [the spec](../fiore-mvp-spec.md); packaging and signing by [the release guide](../releasing.md). These changes are not in the published v0.2.0 preview.
+Platform behavior and events are owned by [the spec](../fiore-mvp-spec.md); packaging and signing by [the release guide](../releasing.md). These sensors were added in v0.3.0; the older v0.2.0 preview does not include them.
 
 ## Setup
 
 Use the tray's **Reactions & permissions** submenu. App category detection works without consent. **Allow window title detection…** requests Accessibility access; grant Fiore access in System Settings → Privacy & Security → Accessibility if you want browser writing-title rules. This reads only the focused window title, never text fields or keystrokes.
 
-Development bundles require macOS 10.15 or newer. Audio-volume metering has the higher requirement below.
+Mac bundles require macOS 10.15 or newer. Audio-volume metering has the higher requirement below.
 
 Open Apple Music or Spotify, then choose its **Allow … reactions…** item. Approve the Automation request. Fiore never launches players. If access was denied, change it under Privacy & Security → Automation. Playback and song banners work with either authorized player; the selected player stays selected while playing when both are active.
 
