@@ -68,12 +68,39 @@ motion.addEventListener("click", () => {
 reducedMotion.addEventListener("change", syncMotion);
 syncMotion();
 
-document.querySelector("#greet").addEventListener("click", () => {
-  const sprite = document.querySelector("#greet .sprite");
-  const greeted = sprite.classList.toggle("greeted");
-  sprite.classList.toggle("gesture", !greeted);
-  sprite.style.setProperty("--row", greeted ? 12 : 0);
-  document.querySelector("#greeting").textContent = greeted
+const greet = document.querySelector("#greet");
+const greetingSprite = greet.querySelector(".sprite");
+let hovered = false;
+let keyboardFocused = false;
+let tapped = false;
+function syncGreeting() {
+  const active = hovered || keyboardFocused || tapped;
+  greetingSprite.classList.toggle("gesture", !active);
+  greetingSprite.style.setProperty("--row", active ? 12 : 0);
+  document.querySelector("#greeting").textContent = active
     ? "Happy to see you."
-    : "Wave back.";
+    : "Hover or tap Fiore.";
+}
+greet.addEventListener("pointerenter", (event) => {
+  if (event.pointerType === "touch") return;
+  hovered = true;
+  syncGreeting();
+});
+greet.addEventListener("pointerleave", () => {
+  hovered = false;
+  syncGreeting();
+});
+greet.addEventListener("focus", () => {
+  keyboardFocused = greet.matches(":focus-visible");
+  syncGreeting();
+});
+greet.addEventListener("blur", () => {
+  keyboardFocused = false;
+  tapped = false;
+  syncGreeting();
+});
+greet.addEventListener("click", (event) => {
+  // Mouse hover is transient; taps keep the reaction visible until another tap.
+  if (event.pointerType === "touch" || !hovered) tapped = !tapped;
+  syncGreeting();
 });

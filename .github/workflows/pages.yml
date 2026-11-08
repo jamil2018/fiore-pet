@@ -27,14 +27,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Test platform detection
-        run: node --test docs/site/platform.test.mjs
+      - name: Test website
+        run: node --test docs/site/*.test.mjs
       - uses: actions/configure-pages@v5
       - name: Stage public files
-        run: |
-          mkdir -p _site/assets
-          cp docs/site/index.html docs/site/styles.css docs/site/app.js docs/site/theme.js docs/site/platform.mjs _site/
-          cp docs/site/assets/*.png _site/assets/
+        run: node docs/site/build.mjs _site
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
