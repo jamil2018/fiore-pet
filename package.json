@@ -1,6 +1,13 @@
 {
   "name": "fiore",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jamil2018/fiore-pet.git"
+  },
+  "bugs": "https://github.com/jamil2018/fiore-pet/issues",
+  "homepage": "https://jamil2018.github.io/fiore-pet/",
   "version": "0.3.2",
   "type": "module",
   "scripts": {

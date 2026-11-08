@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/jamil2018/fiore-pet/security/advisories/new
+    about: Do not disclose vulnerabilities in public issues.
+  - name: Contributing guide
+    url: https://github.com/jamil2018/fiore-pet/blob/main/CONTRIBUTING.md
+    about: Setup, tests and pull-request guidance.

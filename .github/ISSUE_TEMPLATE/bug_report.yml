@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a reproducible problem with Fiore.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "For vulnerabilities, use the Security tab's private reporting link. Remove private data from logs and screenshots."
+  - type: input
+    id: version
+    attributes:
+      label: Fiore version
+      placeholder: "For example, v0.3.2 or a commit SHA"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS version and architecture
+      placeholder: "For example, Windows 11 x64 or macOS 15 on Apple Silicon"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include simultaneous activities, music source, time-of-day mood and display setup when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or sanitized logs
+      description: Remove window titles, track names, usernames and other private information.

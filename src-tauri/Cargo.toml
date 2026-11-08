@@ -2,6 +2,8 @@
 name = "fiore"
 version = "0.3.2"
 description = "Fiore desktop pet"
+license = "MIT"
+repository = "https://github.com/jamil2018/fiore-pet"
 edition = "2021"
 rust-version = "1.90"
 

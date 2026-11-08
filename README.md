@@ -3,7 +3,7 @@
 A tiny pixel-art desktop pet that reacts to your activity and likes being petted.
 last-verified: 2026-11-09
 
-[Visit the Fiore website](https://jamil2018.github.io/fiore-pet/) for downloads and a quick installation guide.
+[Visit the Fiore website](https://jamil2018.github.io/fiore-pet/) for downloads and live animation previews.
 
 **Status:** v0.3.2. Windows 10/11 is the full product; macOS is an experimental universal preview. See the [release guide](docs/releasing.md) for build formats, installation, signing status and Mac limitations.
 
@@ -39,6 +39,10 @@ See the [release guide](docs/releasing.md#local-builds) for prerequisites and bu
 
 Repository workflow: [agent harness](docs/harness/README.md), [code map](docs/codemap.md), [terminology](docs/glossary.md).
 
+## Contributing
+
+Contributions are welcome: bug reports, documentation, artwork and code. Start with the [contributing guide](CONTRIBUTING.md), follow the [Code of Conduct](CODE_OF_CONDUCT.md), and use [private security reporting](SECURITY.md) for vulnerabilities.
+
 ## License
 
-Not yet specified.
+Fiore's code, documentation and original artwork are available under the [MIT license](LICENSE). Third-party dependencies and any separately identified assets retain their own licenses.

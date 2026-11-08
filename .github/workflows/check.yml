@@ -73,7 +73,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20" # scripts/harness/*.mjs need Node >= 20
+          node-version: "22" # match the release and Mac workflows
 
       - name: Cache npm
         if: steps.detect.outputs.lock == 'true'
