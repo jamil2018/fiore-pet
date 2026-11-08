@@ -1,13 +1,13 @@
 # ADR-0001: Tauri v2 over Electron
 
 Purpose: record why Fiore uses Tauri v2 (Rust + TypeScript) instead of Electron.
-last-verified: 2026-11-07
+last-verified: 2026-11-08
 
 - **Status:** accepted
 - **Date:** 2026-11-07
 
 ## Context
-Fiore is an always-running desktop pet that must idle under 1% CPU and ~60 MB RAM, ship as a standalone `.exe` plus NSIS installer, and call Windows APIs (GSMTC, audio meter, shell notification state, foreground window) from native code.
+Fiore is an always-running desktop pet that must idle under 1% CPU and the private-tree RAM budget in `docs/decisions/0006-ram-budget-private-process-tree.md`, ship as a standalone `.exe` plus NSIS installer, and call Windows APIs (GSMTC, audio meter, shell notification state, foreground window) from native code.
 
 ## Decision
 Use Tauri v2: Rust backend (sensors, hub, window, tray) and a Vite + plain TypeScript frontend rendering to canvas.

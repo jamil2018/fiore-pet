@@ -32,6 +32,7 @@ Format: `- [ ] <summary> (source: <run-id or "plan">, <date>)`. Every `TODO(back
 - [ ] Non-Windows `fullscreen.rs` `start` returns `Err`, while the other sensors return `Ok(())` (`fullscreen.rs`) (source: w20-integrate, 2026-11-08)
 - [ ] `#[allow(dead_code)]` on `SensorError::Failed` still says "W1.0 stubs". Drop the allow or update the reason now that real sensors return `Failed` (`sensors/mod.rs`) (source: w20-integrate, 2026-11-08)
 - [ ] Quiet W3.1 idle resample on a merged release build (user-approved, no Calculator/notepad/other GUI to force activity `other`) (source: w30-perf-manual, 2026-11-08)
+- [ ] Align remaining ~60 MB RAM wording in `docs/definition-of-done.md` item 8, `docs/harness/judge-rubric.md` row 5, and `.cursor/skills/win32-sensor/SKILL.md` to the private-tree gate (`docs/decisions/0006-ram-budget-private-process-tree.md`). Needs approved proposal + `/eval`. Stub: `.harness/proposals/005-ram-budget-harness-docs.md` (source: w30-judge-followup, 2026-11-08)
 
 ## Done
 - [x] **ESCALATE RAM** resolved by metric clarification: idle gate is tree private bytes under ~200 MB, not ~60 MB working set. Scenario I measured ~155–162 MB private PASS (`docs/decisions/0006-ram-budget-private-process-tree.md`, `docs/release/v0.1.0-checklist.md`) (source: w30-perf-manual, 2026-11-08)
