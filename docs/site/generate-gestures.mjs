@@ -61,19 +61,20 @@ for (let row = 0; row < 2; row++)
           color,
         );
     }
-    const sway = [0, -1, -2, -1, 0, 1, 2, 1][frame];
-    const x = row === 0 ? 7 + sway : 4 + (frame > 3 ? 1 : 0);
-    const y = row === 0 ? 23 : 34;
-    line(17, 35, x, y, 3, ink);
-    line(17, 34, x, y, 1.8, fur);
-    ellipse(x, y, 3.5, 4, ink);
-    ellipse(x, y - 0.5, 2.5, 3, light);
+    // Keep the gesture close to the shoulder, matching the app's stubby paws.
+    const sway = [0, -0.5, -1, -0.5, 0, 0.5, 1, 0.5][frame];
+    const x = row === 0 ? 12 + sway : 11 + (frame > 3 ? 0.5 : 0);
+    const y = row === 0 ? 29 : 34;
+    line(17, 35, x, y, 2.5, ink);
+    line(17, 34, x, y, 1.4, fur);
+    ellipse(x, y, 2.7, 3, ink);
+    ellipse(x, y - 0.5, 1.8, 2, light);
     if (row === 0) {
       ellipse(x, y + 0.5, 1, 1.3, pink);
       ellipse(x - 1, y - 2, 0.6, 0.6, pink);
       ellipse(x + 1, y - 2, 0.6, 0.6, pink);
     } else {
-      line(x, y - 1, x - 2, y - 1, 1, light);
+      line(x, y - 1, x - 1, y - 1, 0.8, light);
     }
     for (let y0 = 0; y0 < 96; y0++)
       for (let x0 = 0; x0 < 96; x0++) {

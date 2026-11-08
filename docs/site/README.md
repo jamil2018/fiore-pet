@@ -11,6 +11,6 @@ Downloads intentionally target the tested v0.3.0 release. When shipping a new ve
 
 The [README installation notes](../../README.md#installation) own detailed security and troubleshooting guidance. The site links there instead of repeating installation steps.
 
-The reaction selector uses actual preview atlas rows for coding, writing, browsing, music, petting and fullscreen hide/return. The last sequence is a demonstration, not browser fullscreen detection. Time and seasons are noted separately. Website-only greeting and pointing poses are reproducible with `node docs/site/generate-gestures.mjs`; they do not add desktop events or change app sprites.
+The bento grid automatically previews the actual atlas rows for coding, writing, browsing, music, petting and fullscreen hide/return. The last sequence is a demonstration, not browser fullscreen detection. Feature rows below the grid cover placement, privacy, tray controls and seasonal/time reactions. Website-only greeting and pointing poses use short paws matching the body proportions; reproduce them with `node docs/site/generate-gestures.mjs`. They do not add desktop events or change app sprites.
 
-The theme follows the system until the visitor chooses a mode, then stores that preference locally. Storage failures leave controls usable. The global animation control pauses all sprites; reduced-motion preferences disable animation while keeping the event selector usable.
+The theme follows the system until the visitor chooses a mode, then stores that preference locally. Storage failures leave controls usable. The global animation control pauses all sprites; reduced-motion preferences show static poses with every event description still visible.
