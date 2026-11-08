@@ -3,6 +3,8 @@
 A tiny pixel-art desktop pet that reacts to your activity and likes being petted.
 last-verified: 2026-11-08
 
+[Visit the Fiore website](https://jamil2018.github.io/fiore-pet/) for downloads and a quick installation guide.
+
 **Status:** v0.3.0. Windows 10/11 is the full product; macOS is an experimental universal preview. See the [release guide](docs/releasing.md) for build formats, installation, signing status and Mac limitations.
 
 v0.3.0 adds macOS activity, fullscreen, Apple Music/Spotify and opt-in browser media reactions. See [Mac sensor setup](docs/reference/macos-sensors.md) for permissions, browser coverage, audio-volume support and remaining runtime checks.
