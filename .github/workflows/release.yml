@@ -3,7 +3,7 @@ name: release artifacts
 on:
   workflow_dispatch:
   push:
-    branches: [codex/release-0.3.1]
+    branches: [codex/release-0.3.2]
 
 permissions:
   contents: read

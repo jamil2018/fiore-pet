@@ -1,7 +1,7 @@
 # Releasing Fiore
 
 Purpose: build, verify and distribute versioned Fiore release artifacts.
-last-verified: 2026-11-08
+last-verified: 2026-11-09
 
 ## Platforms and signing
 
@@ -50,11 +50,11 @@ The architecture output must include `arm64` and `x86_64`. Bundles land under `s
 
 ## Artifact workflow and publication
 
-[The release workflow](../.github/workflows/release.yml) runs manually or on pushes to `codex/release-0.3.1`. It has read-only repository permissions and never creates a release or tag. Windows runs the full quality gate; macOS runs native formatting/lint/tests, browser probe and scripting-interface checks, frontend tests/build and a universal build. Version 0.3.1 is synchronized across npm, Cargo and Tauri manifests and lockfiles.
+[The release workflow](../.github/workflows/release.yml) runs manually or on pushes to `codex/release-0.3.2`. It has read-only repository permissions and never creates a release or tag. Windows runs the full quality gate; macOS runs native formatting/lint/tests, browser probe and scripting-interface checks, frontend tests/build and a universal build. Version 0.3.2 is synchronized across npm, Cargo and Tauri manifests and lockfiles.
 
 Both jobs stage versioned archives/installers under `release-artifacts/<platform>/`, alongside `SOURCE_SHA-<platform>.txt` and `SHA256SUMS-<platform>.txt`. The uploaded artifact names contain the source commit SHA. Windows staging selects the installer matching the manifest version, even when older installers remain in the build directory. Mac ZIPs use `ditto` to preserve the app's metadata and signature; the workflow resolves the bundled icon from `CFBundleIconFile` and compares its ICNS bytes with the source icon, records the ad-hoc signing identity and verifies signing, both binary architectures, bundled version, Automation entitlement and permission descriptions before uploading.
 
-Before publication, require successful artifact jobs for the exact commit, download both artifact sets, verify their checksums and matching source SHA, and perform available native smoke checks (launch, transparent window, drag/release, petting, tray Show/Hide/Quit, single instance and autostart on/off). Respect a user's instruction to keep the pet closed and disclose any resulting smoke-test gap. On Windows also check activity, music/audio and fullscreen reactions. If no interactive Mac is available, publish only as an experimental preview and explicitly disclose that native runtime smoke checks remain unverified. Tag that same checked commit as `v0.3.1`, then publish the versioned files and checksum/source manifests. Manifest filenames include `windows-x64` or `macos-universal` so they remain distinct when combined. Do not relabel artifacts built from another commit.
+Before publication, require successful artifact jobs for the exact commit, download both artifact sets, verify their checksums and matching source SHA, and perform available native smoke checks (launch, transparent window, drag/release, petting, tray Show/Hide/Quit, single instance and autostart on/off). Respect a user's instruction to keep the pet closed and disclose any resulting smoke-test gap. On Windows also check activity, music/audio and fullscreen reactions. If no interactive Mac is available, publish only as an experimental preview and explicitly disclose that native runtime smoke checks remain unverified. Tag that same checked commit as `v0.3.2`, then publish the versioned files and checksum/source manifests. Manifest filenames include `windows-x64` or `macos-universal` so they remain distinct when combined. Do not relabel artifacts built from another commit.
 
 If hosted Windows packaging alone is blocked by an upstream NSIS download failure, a locally built Windows package from that exact source commit may replace the hosted artifact after the local full gate passes. Record the failure and local build evidence in `BUILD_ORIGIN-windows-x64.txt`, include its checksum, and disclose the origin in release notes. This is an explicit fallback, never a claim that the failed hosted job passed. Other test or compilation failures still block release. The Mac artifact must retain its successful native build and verification evidence.
 
